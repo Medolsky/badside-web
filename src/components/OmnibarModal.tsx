@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Search, X, ChevronRight } from "lucide-react";
 import { store } from "@/lib/store";
 import { Player } from "@/types";
+import { formatBadsideMemberName } from "@/lib/badside-tag";
 import { Avatar, PriorityBadge } from "./ui";
 
 interface OmnibarModalProps {
@@ -107,6 +108,7 @@ export function OmnibarModal({ isOpen, onClose }: OmnibarModalProps) {
           ) : (
             filtered.map((p, i) => {
               const c = p.characters.find((ch) => ch.isActive) || p.characters[0];
+              const displayName = formatBadsideMemberName(c?.fullName || p.name || "Tanpa nama", p.groupName);
               return (
                 <button
                   key={p.id}
@@ -115,14 +117,14 @@ export function OmnibarModal({ isOpen, onClose }: OmnibarModalProps) {
                   className={`w-full flex items-center justify-between gap-3 p-2.5 rounded-xl text-left transition ${i === active ? "bg-[#1a1a1a]" : ""}`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <Avatar name={c?.fullName} online={p.isOnline} />
+                    <Avatar name={displayName} online={p.isOnline} />
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className={`text-sm font-bold truncate ${i === active ? "text-[#FF1E2D]" : "text-white"}`}>{c?.fullName || "Tanpa nama"}</span>
+                        <span className={`text-sm font-bold truncate ${i === active ? "text-[#FF1E2D]" : "text-white"}`}>{displayName}</span>
                         {p.isWatchlisted && <PriorityBadge priority={p.watchlistPriority} short />}
                       </div>
                       <div className="text-[11px] text-neutral-500 truncate">
-                        CID #{c?.characterId} · {c?.faction || "Tanpa grup"} · {p.isOnline ? `Di kota #${p.currentServerId}` : "Offline"}
+                        CID #{c?.characterId || "—"} · {p.groupName || c?.faction || "Tanpa grup"} · {p.isOnline ? `Di kota #${p.currentServerId}` : "Offline"}
                       </div>
                     </div>
                   </div>

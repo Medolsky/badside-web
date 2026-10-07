@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Users, Crosshair, Bell, Clock, MapPin, Car, ChevronRight, Activity, Radio, UsersRound } from "lucide-react";
 import { store, formatDuration } from "@/lib/store";
 import { Player, Group, EventLog, ServerOverview } from "@/types";
+import { formatBadsideMemberName } from "@/lib/badside-tag";
 import { Card, StatCard, Avatar, OnlineBadge, PriorityBadge, GroupLogo, EmptyState, btnPrimary, btnGhost } from "@/components/ui";
 
 const EVENT_LABEL: Record<EventLog["eventType"], string> = {
@@ -43,15 +44,30 @@ export default function DashboardPage() {
   const [tick, setTick] = useState(0);
   const [hello, setHello] = useState("Halo");
 
-  useEffect(() => {
+  const refreshState = () => {
     const p = store.getPlayers();
     setWatched(p.filter((ply) => ply.isWatchlisted && ply.isOnline));
     setGroups(store.getGroups());
     setEvents(store.getEvents().slice(0, 6));
     setOverview(store.getServerOverview());
+  };
+
+  useEffect(() => {
+    refreshState();
     setHello(greeting());
+
+    // Live sync with server every 5 seconds
+    const syncInterval = setInterval(() => {
+      fetch("/api/fivem/sync")
+        .then(() => refreshState())
+        .catch(() => refreshState());
+    }, 5000);
+
     const i = setInterval(() => setTick((t) => t + 1), 1000);
-    return () => clearInterval(i);
+    return () => {
+      clearInterval(i);
+      clearInterval(syncInterval);
+    };
   }, []);
 
   const today = new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
@@ -113,6 +129,7 @@ export default function DashboardPage() {
                 {watched.map((player) => {
                   const c = player.characters.find((ch) => ch.isActive) || player.characters[0];
                   const sec = (player.currentSession?.durationSec || 0) + tick;
+                  const displayName = formatBadsideMemberName(c?.fullName || player.name || "Target", player.groupName);
                   return (
                     <Link
                       key={player.id}
@@ -121,11 +138,11 @@ export default function DashboardPage() {
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-3 min-w-0">
-                          <Avatar name={c?.fullName} online />
+                          <Avatar name={displayName} online />
                           <div className="min-w-0">
-                            <div className="text-sm font-bold text-white group-hover:text-[#FF1E2D] transition truncate">{c?.fullName}</div>
+                            <div className="text-sm font-bold text-white group-hover:text-[#FF1E2D] transition truncate">{displayName}</div>
                             <div className="text-[11px] text-neutral-400 truncate">
-                              {c?.faction || "Tanpa grup"} · CID #{c?.characterId}
+                              {player.groupName || c?.faction || "Tanpa grup"} · CID #{c?.characterId || "—"}
                             </div>
                           </div>
                         </div>

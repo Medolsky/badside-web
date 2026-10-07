@@ -6,6 +6,7 @@ import { ChevronRight, Radio, Moon, UsersRound, Clock, Users, Activity, MessageS
 import { store, formatDuration } from "@/lib/store";
 import { Group } from "@/types";
 import type { DiscordMember, DiscordRole } from "@/lib/discord";
+import { formatBadsideMemberName } from "@/lib/badside-tag";
 import { PageHeader, Card, Avatar, GroupLogo, EmptyState, StatCard, PriorityBadge } from "@/components/ui";
 
 export default function GroupDetailPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -133,7 +134,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ slug: st
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={m.avatarUrl} alt="" className="h-10 w-10 rounded-xl bg-[#1a1a1a] border border-[#2a2a2a] shrink-0" loading="lazy" />
                   <div className="min-w-0 flex-1">
-                    <div className="text-sm font-bold text-white truncate">{m.displayName}</div>
+                    <div className="text-sm font-bold text-white truncate">{formatBadsideMemberName(m.displayName, group.slug)}</div>
                     <div className="text-[11px] text-neutral-500 truncate">@{m.username}</div>
                     <div className="flex flex-wrap gap-1 mt-1">
                       {roles.slice(0, 2).map((r) => (
@@ -165,7 +166,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ slug: st
               <div className="flex items-center gap-3 min-w-0">
                 <Avatar name={m.characterName} online />
                 <div className="min-w-0">
-                  <div className="text-sm font-bold text-white group-hover:text-[#FF1E2D] transition truncate">{m.characterName}</div>
+                  <div className="text-sm font-bold text-white group-hover:text-[#FF1E2D] transition truncate">{formatBadsideMemberName(m.characterName, group.slug)}</div>
                   <div className="text-[11px] text-neutral-500 truncate">
                     {m.roleTitle} · CID #{m.characterId}
                   </div>
@@ -188,7 +189,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ slug: st
               <div className="flex items-center gap-3 min-w-0">
                 <Avatar name={m.characterName} online={false} />
                 <div className="min-w-0">
-                  <div className="text-sm font-semibold text-neutral-300 truncate">{m.characterName}</div>
+                  <div className="text-sm font-semibold text-neutral-300 truncate">{formatBadsideMemberName(m.characterName, group.slug)}</div>
                   <div className="text-[11px] text-neutral-500 truncate">{m.roleTitle}</div>
                 </div>
               </div>

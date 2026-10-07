@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { DiscordError, getGuildInfo, getMembers, getRoles, isDiscordConfigured, clearDiscordCache } from "@/lib/discord";
-import { ROLE_IDS, isUserAdminOrHandler } from "@/lib/roles";
+import { ROLE_IDS, isUserAdminOrHandler, GANG_ROLES } from "@/lib/roles";
+import { formatBadsideMemberName, getBadsideTag } from "@/lib/badside-tag";
 
 // GET /api/discord/overview[?refresh=1]
 // Returns guild, real roles, and real members with verified Admin & Badside Handler flags
@@ -20,8 +21,21 @@ export async function GET(req: NextRequest) {
         .filter((m) => !m.bot)
         .map((m) => {
           const auth = isUserAdminOrHandler(m.roleIds);
+          const tag = getBadsideTag(m.roleIds);
+          const matchedGang = GANG_ROLES.find(
+            (g) => g.tag === tag || m.roleIds.includes(g.id)
+          );
+          const formattedDisplayName = tag
+            ? formatBadsideMemberName(m.displayName, tag)
+            : m.displayName;
+
           return {
             ...m,
+            displayName: formattedDisplayName,
+            rawDisplayName: m.displayName,
+            badsideTag: tag,
+            gangName: matchedGang?.name,
+            gangSlug: matchedGang?.slug,
             isAdmin: auth.isAdmin,
             isBadsideHandler: auth.isBadsideHandler,
             isStaff: auth.isStaff,

@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { Clock, MapPin, Car, Crosshair, Eye, EyeOff, Copy, Check, ShieldCheck, Network, IdCard, History, UserRound } from "lucide-react";
 import { store, maskIdentifier, formatDuration, formatCurrency } from "@/lib/store";
 import { Player } from "@/types";
+import { formatBadsideMemberName } from "@/lib/badside-tag";
 import { DiscordMemberRoles } from "@/components/DiscordMemberRoles";
 import { PageHeader, Card, OnlineBadge, PriorityBadge, Tag, GroupLogo, btnPrimary, btnGhost } from "@/components/ui";
 
@@ -93,12 +94,16 @@ export default function PlayerDetailPage({ params }: { params: Promise<{ id: str
 
   return (
     <div className="space-y-6 max-w-7xl">
-      <PageHeader title={c?.fullName || "Tanpa nama"} back={{ href: "/players", label: "Daftar Player" }}
+      <PageHeader
+        title={formatBadsideMemberName(c?.fullName || player.name || "Tanpa nama", player.groupName)}
+        back={{ href: "/players", label: "Daftar Player" }}
         subtitle={
           <span className="flex flex-wrap items-center gap-2 mt-1">
             <OnlineBadge online={player.isOnline} label={player.isOnline ? `DI KOTA · #${player.currentServerId}` : undefined} />
-            <Tag>CID #{c?.characterId}</Tag>
-            {c?.faction && <Tag tone={c.faction === "BADside" ? "red" : "neutral"}>{c.faction}</Tag>}
+            <Tag>CID #{c?.characterId || "—"}</Tag>
+            {(player.groupName || c?.faction) && (
+              <Tag tone="red">{player.groupName || c?.faction}</Tag>
+            )}
             {player.isWatchlisted && <PriorityBadge priority={player.watchlistPriority} />}
           </span>
         }

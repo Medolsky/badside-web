@@ -66,13 +66,91 @@ export const store = {
     return undefined;
   },
 
+  addOrUpdatePlayer(playerData: Partial<Player> & { license: string }): Player {
+    const existingIndex = players.findIndex(
+      p => p.id === playerData.id ||
+           p.license === playerData.license ||
+           (playerData.discordId && p.discordId === playerData.discordId)
+    );
+
+    if (existingIndex !== -1) {
+      players[existingIndex] = { ...players[existingIndex], ...playerData };
+      return players[existingIndex];
+    } else {
+      const newPlayer: Player = {
+        id: playerData.id || playerData.license,
+        license: playerData.license,
+        name: playerData.name || "Unknown Player",
+        steam: playerData.steam,
+        discordId: playerData.discordId,
+        isOnline: playerData.isOnline ?? true,
+        currentServerId: playerData.currentServerId,
+        firstSeen: playerData.firstSeen || new Date().toISOString(),
+        lastSeen: new Date().toISOString(),
+        characters: playerData.characters || [],
+        currentSession: playerData.currentSession,
+        groupName: playerData.groupName,
+        isWatchlisted: playerData.isWatchlisted ?? false,
+      };
+      players.push(newPlayer);
+      return newPlayer;
+    }
+  },
+
+  endPlayerSession(playerIdOrServerId: string | number, reason = "Keluar Kota"): Player | undefined {
+    const player = typeof playerIdOrServerId === "number"
+      ? players.find(p => p.currentServerId === playerIdOrServerId)
+      : players.find(p => p.id === playerIdOrServerId || p.license === playerIdOrServerId || p.discordId === playerIdOrServerId);
+
+    if (!player) return undefined;
+
+    const nowIso = new Date().toISOString();
+    let durationSec = 0;
+
+    if (player.currentSession) {
+      durationSec = Math.max(
+        0,
+        Math.round((Date.now() - new Date(player.currentSession.joinedAt).getTime()) / 1000)
+      );
+      player.currentSession.leftAt = nowIso;
+      player.currentSession.durationSec = durationSec;
+    }
+
+    player.isOnline = false;
+    player.currentServerId = undefined;
+    player.lastSeen = nowIso;
+    player.currentSession = undefined;
+
+    return player;
+  },
+
   // Groups
   getGroups(): Group[] {
-    return groups;
+    return groups.map((g) => {
+      const groupPlayers = players.filter(
+        (p) => p.groupName === g.name || p.groupName === g.slug
+      );
+      const onlineCount = groupPlayers.filter((p) => p.isOnline).length;
+      return {
+        ...g,
+        onlineCount,
+        lastActivity: onlineCount > 0 ? `${onlineCount} di kota` : g.lastActivity || "Standby",
+      };
+    });
   },
 
   getGroupById(id: string): Group | undefined {
-    return groups.find(g => g.id === id || g.slug === id);
+    const g = groups.find(grp => grp.id === id || grp.slug === id);
+    if (!g) return undefined;
+    const groupPlayers = players.filter(
+      (p) => p.groupName === g.name || p.groupName === g.slug
+    );
+    const onlineCount = groupPlayers.filter((p) => p.isOnline).length;
+    return {
+      ...g,
+      onlineCount,
+      lastActivity: onlineCount > 0 ? `${onlineCount} di kota` : g.lastActivity || "Standby",
+    };
   },
 
   // Watchlist

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { store } from "@/lib/store";
+import { store, formatDuration } from "@/lib/store";
 import { sendAlertToDiscord } from "@/lib/discordWebhook";
+import { formatBadsideMemberName, getBadsideTag } from "@/lib/badside-tag";
+import { getMembers } from "@/lib/discord";
+import { GANG_ROLES } from "@/lib/roles";
 
 type IngestEvent =
   | { type: "join"; serverId: number; identifiers: Record<string, string>; name: string }
@@ -12,7 +15,9 @@ const now = () => new Date().toLocaleTimeString("id-ID", { hour12: false });
 
 export async function POST(req: NextRequest) {
   const secret = process.env.FIVEM_API_SECRET;
-  if (!secret || req.headers.get("x-api-key") !== secret) {
+  const headerSecret = req.headers.get("x-api-key") || req.headers.get("x-api-secret");
+  
+  if (!secret || headerSecret !== secret) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
@@ -27,63 +32,103 @@ export async function POST(req: NextRequest) {
     case "join": {
       const license = body.identifiers.license;
       if (!license) return NextResponse.json({ error: "license identifier required" }, { status: 400 });
-      const p = store.getPlayerById(license);
-      if (!p) {
-        // Unknown license: accept but don't create a profile until the character DB sync provides one.
-        return NextResponse.json({ ok: true, known: false });
+
+      const rawDiscord = body.identifiers.discord?.replace("discord:", "") || "";
+      let p = store.getPlayerById(license) || (rawDiscord ? store.getPlayerById(rawDiscord) : undefined);
+
+      // Resolve Discord info if available
+      let discordMember = null;
+      if (rawDiscord) {
+        try {
+          const allMembers = await getMembers();
+          discordMember = allMembers.find((m) => m.id === rawDiscord) || null;
+        } catch {
+          // Fallback if discord unavailable
+        }
       }
-      store.updatePlayer(p.id, {
+
+      // Determine gang / faction from Discord roles or existing player group
+      const resolvedRoleIds = discordMember?.roleIds || [];
+      const badsideTag = getBadsideTag(resolvedRoleIds) || getBadsideTag(p?.groupName);
+      
+      const matchedGang = GANG_ROLES.find(
+        (g) => g.tag === badsideTag || (discordMember && discordMember.roleIds.includes(g.id))
+      );
+      const groupName = matchedGang ? matchedGang.name : p?.groupName || undefined;
+
+      const rawDisplayName = discordMember?.displayName || p?.name || body.name;
+      const formattedDisplayName = badsideTag
+        ? formatBadsideMemberName(rawDisplayName, badsideTag)
+        : rawDisplayName;
+
+      const nowIso = new Date().toISOString();
+      const newSession = {
+        id: `sess-${Date.now()}`,
+        playerId: p?.id || license,
+        serverId: body.serverId,
+        joinedAt: nowIso,
+        durationSec: 0,
+        lastHeartbeat: nowIso,
+      };
+
+      p = store.addOrUpdatePlayer({
+        id: p?.id || license,
+        license,
+        name: formattedDisplayName,
+        steam: body.identifiers.steam ?? p?.steam,
+        discordId: rawDiscord || p?.discordId,
         isOnline: true,
         currentServerId: body.serverId,
-        steam: body.identifiers.steam ?? p.steam,
-        discordId: body.identifiers.discord?.replace("discord:", "") ?? p.discordId,
-        lastSeen: new Date().toISOString(),
-        currentSession: {
-          id: `sess-${Date.now()}`,
-          playerId: p.id,
-          serverId: body.serverId,
-          joinedAt: new Date().toISOString(),
-          durationSec: 0,
-          lastHeartbeat: new Date().toISOString(),
-        },
+        lastSeen: nowIso,
+        groupName: groupName,
+        currentSession: newSession,
       });
+
       const c = p.characters.find((ch) => ch.isActive) || p.characters[0];
+      const charName = c?.fullName || formattedDisplayName;
+
       store.logEvent({
         playerId: p.id,
-        playerName: c?.fullName || body.name,
+        playerName: charName,
         eventType: "JOIN_CITY",
-        eventData: `Connected to server ID #${body.serverId}`,
+        eventData: `Masuk ke kota (Server ID #${body.serverId}) [${badsideTag || "Civilian"}]`,
         severity: "INFO",
         timestamp: now(),
       });
+
       if (p.isWatchlisted) {
         const alert = store.addAlert({
           type: "WATCHLIST_ONLINE",
           playerId: p.id,
-          characterName: c?.fullName,
+          characterName: charName,
           groupName: p.groupName,
-          title: "WATCHLIST PLAYER ONLINE",
-          message: `${c?.fullName || body.name} has entered the city (ID #${body.serverId}).`,
+          title: "TARGET WATCHLIST MASUK KOTA",
+          message: `${charName} telah memasuki kota (ID #${body.serverId}).`,
           severity: p.watchlistPriority === "HIGH" ? "CRITICAL" : "WARNING",
         });
         await sendAlertToDiscord(alert, { serverId: body.serverId });
       }
-      return NextResponse.json({ ok: true, known: true });
+
+      return NextResponse.json({ ok: true, known: true, tag: badsideTag, name: formattedDisplayName });
     }
 
     case "leave": {
-      const p = store.getPlayerByServerId(body.serverId);
+      // Automatic Off-Duty when player leaves the city
+      const p = store.endPlayerSession(body.serverId, body.reason || "Disconnect");
       if (p) {
-        store.updatePlayer(p.id, { isOnline: false, currentServerId: undefined, lastSeen: new Date().toISOString() });
         const c = p.characters.find((ch) => ch.isActive) || p.characters[0];
+        const displayName = c?.fullName || p.name || "Unknown";
+        
         store.logEvent({
           playerId: p.id,
-          playerName: c?.fullName || "Unknown",
+          playerName: displayName,
           eventType: "LEAVE_CITY",
-          eventData: `Disconnected (${body.reason || "no reason"})`,
+          eventData: `Keluar kota (Auto Off-Duty) — Alasan: ${body.reason || "Disconnect"}`,
           severity: "NOTICE",
           timestamp: now(),
         });
+
+        console.log(`[Badside Ingest] Auto Off-Duty executed for ${displayName} (Server #${body.serverId})`);
       }
       return NextResponse.json({ ok: true });
     }
@@ -93,20 +138,22 @@ export async function POST(req: NextRequest) {
       if (p) {
         const prev = p.characters.find((ch) => ch.isActive);
         p.characters.forEach((ch) => (ch.isActive = ch.characterId === body.characterId));
+
         store.logEvent({
           playerId: p.id,
           playerName: body.fullName,
           eventType: "CHAR_SWITCH",
-          eventData: `Loaded character ${body.fullName} (CID #${body.characterId})`,
+          eventData: `Memuat karakter ${body.fullName} (CID #${body.characterId})`,
           severity: "INFO",
           timestamp: now(),
         });
+
         if (prev && prev.characterId !== body.characterId) {
           const alert = store.addAlert({
             type: "CHAR_CHANGED",
             playerId: p.id,
             characterName: body.fullName,
-            title: "CHARACTER SWITCH",
+            title: "GANTI KARAKTER",
             message: `${prev.fullName} (#${prev.characterId}) → ${body.fullName} (#${body.characterId})`,
             severity: "WARNING",
           });
@@ -118,6 +165,9 @@ export async function POST(req: NextRequest) {
 
     case "heartbeat": {
       const ts = new Date().toISOString();
+      const activeServerIds = new Set(body.players.map((hb) => hb.serverId));
+
+      // 1. Update online players in this heartbeat batch
       for (const hb of body.players) {
         const p = store.getPlayerByServerId(hb.serverId);
         if (!p) continue;
@@ -129,7 +179,36 @@ export async function POST(req: NextRequest) {
           currentSession: p.currentSession && { ...p.currentSession, lastHeartbeat: ts },
         });
       }
-      return NextResponse.json({ ok: true, received: body.players.length });
+
+      // 2. AUTO OFF-DUTY DETECTION:
+      // Any player currently marked isOnline whose serverId is missing from this heartbeat batch
+      // has lost connection or crashed -> immediately auto off-duty / end session!
+      const onlinePlayers = store.getPlayers().filter((p) => p.isOnline);
+      let autoOffDutyCount = 0;
+
+      for (const p of onlinePlayers) {
+        if (p.currentServerId && !activeServerIds.has(p.currentServerId)) {
+          const closed = store.endPlayerSession(p.id, "Koneksi terputus / Timeout keluar kota");
+          if (closed) {
+            autoOffDutyCount++;
+            store.logEvent({
+              playerId: p.id,
+              playerName: p.name || "Unknown",
+              eventType: "LEAVE_CITY",
+              eventData: `Koneksi terputus / Timeout keluar kota (Auto Off Duty)`,
+              severity: "NOTICE",
+              timestamp: now(),
+            });
+            console.log(`[Badside Heartbeat] Auto Off-Duty timeout executed for ${p.name}`);
+          }
+        }
+      }
+
+      return NextResponse.json({
+        ok: true,
+        received: body.players.length,
+        autoOffDutied: autoOffDutyCount,
+      });
     }
 
     default:

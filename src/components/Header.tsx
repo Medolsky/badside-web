@@ -13,9 +13,13 @@ export function Header() {
 
   useEffect(() => {
     const refresh = () => {
-      const o = store.getServerOverview();
-      setStats({ online: o.playersOnline, watched: o.watchedOnline, alerts: o.activeAlertsCount });
-      setTime(new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", hour12: false }));
+      fetch("/api/fivem/sync")
+        .catch(() => {})
+        .finally(() => {
+          const o = store.getServerOverview();
+          setStats({ online: o.playersOnline, watched: o.watchedOnline, alerts: o.activeAlertsCount });
+          setTime(new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", hour12: false }));
+        });
     };
     refresh();
     const i = setInterval(refresh, 5000);

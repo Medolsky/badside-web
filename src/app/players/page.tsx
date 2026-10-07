@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Users, Search, Crosshair, ChevronRight, MapPin, Clock } from "lucide-react";
 import { store, formatDuration } from "@/lib/store";
 import { Player } from "@/types";
+import { formatBadsideMemberName } from "@/lib/badside-tag";
 import { PageHeader, Card, Avatar, OnlineBadge, PriorityBadge, Tag, EmptyState, Segmented, input } from "@/components/ui";
 
 type StatusFilter = "ALL" | "ONLINE" | "WATCHLIST" | "OFFLINE";
@@ -19,8 +20,19 @@ export default function PlayersPage() {
   useEffect(() => {
     setPlayers([...store.getPlayers()]);
     if (new URLSearchParams(window.location.search).get("filter") === "watchlist") setStatus("WATCHLIST");
+
+    // Live sync with FiveM server / database
+    const syncInterval = setInterval(() => {
+      fetch("/api/fivem/sync")
+        .then(() => setPlayers([...store.getPlayers()]))
+        .catch(() => setPlayers([...store.getPlayers()]));
+    }, 5000);
+
     const i = setInterval(() => setTick((t) => t + 1), 1000);
-    return () => clearInterval(i);
+    return () => {
+      clearInterval(i);
+      clearInterval(syncInterval);
+    };
   }, []);
 
   const groups = useMemo(() => [...new Set(players.map((p) => p.groupName).filter(Boolean))] as string[], [players]);
@@ -145,18 +157,19 @@ export default function PlayersPage() {
                   {filtered.map((p) => {
                     const c = p.characters.find((ch) => ch.isActive) || p.characters[0];
                     const sec = p.isOnline ? (p.currentSession?.durationSec || 0) + tick : 0;
+                    const displayName = formatBadsideMemberName(c?.fullName || p.name || "Player", p.groupName);
                     return (
                       <tr key={p.id} className="hover:bg-[#161616] transition group">
                         <td className="py-3 px-5">
                           <Link href={`/players/${p.id}`} className="flex items-center gap-3 min-w-0">
-                            <Avatar name={c?.fullName} online={p.isOnline} />
+                            <Avatar name={displayName} online={p.isOnline} />
                             <div className="min-w-0">
                               <div className="flex items-center gap-2">
-                                <span className="text-sm font-bold text-white group-hover:text-[#FF1E2D] transition truncate">{c?.fullName}</span>
+                                <span className="text-sm font-bold text-white group-hover:text-[#FF1E2D] transition truncate">{displayName}</span>
                                 {p.isWatchlisted && <PriorityBadge priority={p.watchlistPriority} short />}
                               </div>
                               <div className="text-[11px] text-neutral-500">
-                                CID #{c?.characterId} · {c?.job}
+                                CID #{c?.characterId || "—"} · {c?.job || "Civilian"}
                               </div>
                             </div>
                           </Link>
@@ -209,15 +222,16 @@ export default function PlayersPage() {
               {filtered.map((p) => {
                 const c = p.characters.find((ch) => ch.isActive) || p.characters[0];
                 const sec = p.isOnline ? (p.currentSession?.durationSec || 0) + tick : 0;
+                const displayName = formatBadsideMemberName(c?.fullName || p.name || "Player", p.groupName);
                 return (
                   <Link key={p.id} href={`/players/${p.id}`} className="block p-4 hover:bg-[#161616] transition">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-3 min-w-0">
-                        <Avatar name={c?.fullName} online={p.isOnline} />
+                        <Avatar name={displayName} online={p.isOnline} />
                         <div className="min-w-0">
-                          <div className="text-sm font-bold text-white truncate">{c?.fullName}</div>
+                          <div className="text-sm font-bold text-white truncate">{displayName}</div>
                           <div className="text-[11px] text-neutral-500 truncate">
-                            CID #{c?.characterId} · {p.groupName || "Tanpa grup"}
+                            CID #{c?.characterId || "—"} · {p.groupName || "Tanpa grup"}
                           </div>
                         </div>
                       </div>

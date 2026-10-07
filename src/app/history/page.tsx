@@ -5,6 +5,7 @@ import Link from "next/link";
 import { MapPin, History, Search } from "lucide-react";
 import { store } from "@/lib/store";
 import { EventLog } from "@/types";
+import { formatBadsideMemberName } from "@/lib/badside-tag";
 import { PageHeader, Card, EmptyState, input } from "@/components/ui";
 
 const TYPES: { key: EventLog["eventType"] | "ALL"; label: string }[] = [
@@ -86,7 +87,7 @@ export default function HistoryPage() {
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
                   <span className="font-mono-telemetry text-neutral-500">{e.timestamp}</span>
                   <Link href={`/players/${e.playerId}`} className="text-sm font-bold text-white hover:text-[#FF1E2D]">
-                    {e.playerName}
+                    {formatBadsideMemberName(e.playerName)}
                   </Link>
                   <span className="px-2 py-0.5 rounded-md bg-[#181818] border border-[#2a2a2a] text-[10px] font-semibold text-neutral-300">{LABEL[e.eventType]}</span>
                 </div>
