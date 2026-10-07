@@ -1,0 +1,148 @@
+// This is your Prisma schema file for FiveM Player Intelligence & Monitoring Dashboard
+datasource db {
+  provider = "sqlite" // Can be switched to "postgresql" via DATABASE_URL
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Player {
+  id           String        @id @default(uuid())
+  license      String        @unique // fivem license:xxx
+  steam        String?       // steam:110000xxx
+  discordId    String?       // discord:123456789
+  xbox         String?
+  live         String?
+  rockstar     String?
+  ipAddress    String?       // masked in logs
+  isOnline     Boolean       @default(false)
+  currentServerId Int?
+  currentArea  String?
+  currentVehicle String?
+  ping         Int?          @default(0)
+  firstSeen    DateTime      @default(now())
+  lastSeen     DateTime      @default(now())
+  characters   Character[]
+  sessions     Session[]
+  events       Event[]
+  groupMembers GroupMember[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Character {
+  id           String        @id @default(uuid())
+  playerId     String
+  player       Player        @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  characterId  Int           // In-game CID (e.g. #245)
+  firstName    String
+  lastName     String
+  fullName     String
+  job          String        @default("Unemployed")
+  jobGrade     String        @default("Grade 0")
+  faction      String?       // e.g. "BADside", "LSPD", "Ballas"
+  cash         Int           @default(0)
+  bank         Int           @default(0)
+  dateOfBirth  String?
+  gender       String?
+  phoneNumber  String?
+  isActive     Boolean       @default(false) // current selected character in session
+  lastSeen     DateTime      @default(now())
+  createdAt    DateTime      @default(now())
+  sessions     Session[]
+  groupMembers GroupMember[]
+}
+
+model Session {
+  id           String    @id @default(uuid())
+  playerId     String
+  player       Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  characterId  String?
+  character    Character? @relation(fields: [characterId], references: [id], onDelete: SetNull)
+  serverId     Int       // fivem server id (e.g. 128)
+  joinedAt     DateTime  @default(now())
+  leftAt       DateTime?
+  durationSec  Int       @default(0)
+  lastHeartbeat DateTime @default(now())
+  lastArea     String?
+  lastVehicle  String?
+  ipMasked     String?
+}
+
+model Group {
+  id           String        @id @default(uuid())
+  name         String        @unique // e.g. "BADside", "LSPD", "Los Vagos"
+  slug         String        @unique
+  tag          String?       // [BAD]
+  description  String?
+  color        String        @default("#8B5CF6")
+  priority     String        @default("HIGH") // HIGH, MEDIUM, LOW
+  discordRoleId String?
+  members      GroupMember[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model GroupMember {
+  id          String     @id @default(uuid())
+  groupId     String
+  group       Group      @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  playerId    String
+  player      Player     @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  characterId String?
+  character   Character? @relation(fields: [characterId], references: [id], onDelete: SetNull)
+  roleTitle   String     @default("Member") // Leader, Underboss, Member, Enforcer
+  status      String     @default("ACTIVE") // ACTIVE, INACTIVE, SUSPENDED
+  addedAt     DateTime   @default(now())
+}
+
+model Watchlist {
+  id          String   @id @default(uuid())
+  targetType  String   // "PLAYER" or "GROUP"
+  targetId    String   // Player.id or Group.id depending on targetType (no FK: polymorphic)
+  priority    String   @default("HIGH") // "HIGH", "MEDIUM", "LOW"
+  category    String   @default("SURVEILLANCE") // "SUSPECT", "HIGH_VALUE", "SYNDICATE_LEADER", "WATCHLIST"
+  reason      String
+  notes       String?
+  createdBy   String   @default("SYSTEM_ADMIN")
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Event {
+  id          String   @id @default(uuid())
+  playerId    String?
+  player      Player?  @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  eventType   String   // "JOIN_CITY", "LEAVE_CITY", "CHAR_SWITCH", "VEHICLE_CHANGE", "DISTRICT_MOVE", "DISCORD_LINK"
+  eventData   String   // JSON payload / text description
+  location    String?
+  severity    String   @default("INFO") // INFO, NOTICE, WARNING, CRITICAL
+  createdAt   DateTime @default(now())
+}
+
+model Alert {
+  id          String    @id @default(uuid())
+  type        String    // "WATCHLIST_ONLINE", "GROUP_MASS_ONLINE", "CHAR_CHANGED", "ROLE_CHANGED", "SUSPICIOUS_HEARTBEAT"
+  playerId    String?
+  characterName String?
+  groupName   String?
+  title       String
+  message     String
+  severity    String    @default("WARNING") // INFO, WARNING, CRITICAL
+  isRead      Boolean   @default(false)
+  readAt      DateTime?
+  createdAt   DateTime  @default(now())
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  staffId     String   // staff Discord ID or username
+  staffName   String
+  action      String   // "REVEAL_IDENTIFIER", "ADD_WATCHLIST", "DELETE_WATCHLIST", "EXPORT_REPORT", "CONFIG_CHANGE"
+  target      String   // player license or id
+  metadata    String?  // JSON details: e.g. revealed license:xxx
+  createdAt   DateTime @default(now())
+}
