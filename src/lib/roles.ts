@@ -15,7 +15,6 @@ export const ROLE_IDS = {
   SOG: "1555555425968070776",
   OLIVER_CASPER: "1532388456959836322",
   GHOST_FAMS: "1556662518166855730",
-  PETINGGI_BADSIDE: "1480806468616720483",
 } as const;
 
 export const ADMIN_ROLE_IDS: string[] = [
@@ -24,7 +23,7 @@ export const ADMIN_ROLE_IDS: string[] = [
   ROLE_IDS.HIGH_COMMAND,
 ];
 
-// Faksi & Gang murni Badside (Polisi tidak dimasukkan)
+// Faksi & Gang murni Badside Ophelia
 export const GANG_ROLES = [
   { id: ROLE_IDS.HIGH_TABLE, name: "HIGH TABLE", slug: "high-table", tag: "HT", color: "#D4AF37", priority: "HIGH" as const },
   { id: ROLE_IDS.WHITE_TIGER, name: "WHITE TIGER", slug: "white-tiger", tag: "WT", color: "#93c5fd", priority: "HIGH" as const },
@@ -34,10 +33,9 @@ export const GANG_ROLES = [
   { id: ROLE_IDS.SOG, name: "SOG", slug: "sog", tag: "SOG", color: "#3b82f6", priority: "MEDIUM" as const },
   { id: ROLE_IDS.OLIVER_CASPER, name: "OLIVER CASPER", slug: "oliver-casper", tag: "OC", color: "#ea580c", priority: "MEDIUM" as const },
   { id: ROLE_IDS.GHOST_FAMS, name: "GHOST FAMS", slug: "ghost-fams", tag: "GF", color: "#dc2626", priority: "LOW" as const },
-  { id: ROLE_IDS.PETINGGI_BADSIDE, name: "PETINGGI BADSIDE", slug: "petinggi-badside", tag: "P-BS", color: "#f87171", priority: "HIGH" as const },
 ];
 
-// Role bot dan non-badside yang tidak perlu dimasukkan ke website
+// Role bot, polisi, dan petinggi yang tidak perlu dimasukkan ke website
 export const IGNORED_ROLE_NAMES = [
   "dyno",
   "serverstats",
@@ -48,6 +46,9 @@ export const IGNORED_ROLE_NAMES = [
   "ophelia-badside",
   "polisi",
   "polisi👮🏻‍♂️",
+  "police",
+  "petinggi badside",
+  "petinggi badside🔴",
 ];
 
 export function isRoleIgnored(roleName: string, managed = false): boolean {

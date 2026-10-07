@@ -167,9 +167,6 @@ export function Tag({ children, tone = "neutral" }: { children: React.ReactNode;
 
 const GROUP_LOGO: Record<string, string> = {
   badside: "/logos/ophelia-logo.png",
-  "petinggi-badside": "/logos/ophelia-logo.png",
-  "petinggi badside": "/logos/ophelia-logo.png",
-  "petinggi badside🔴": "/logos/ophelia-logo.png",
   "ophelia-badside": "/logos/ophelia-logo.png",
 };
 
