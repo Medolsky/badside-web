@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { DiscordError, getGuildInfo, getMembers, getRoles, isDiscordConfigured } from "@/lib/discord";
+import { DiscordError, getGuildInfo, getMembers, getRoles, isDiscordConfigured, clearDiscordCache } from "@/lib/discord";
 import { ROLE_IDS, isUserAdminOrHandler } from "@/lib/roles";
 
 // GET /api/discord/overview[?refresh=1]
@@ -9,21 +9,24 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ configured: false }, { status: 200 });
   }
   const force = req.nextUrl.searchParams.get("refresh") === "1";
+  if (force) clearDiscordCache();
   try {
     const [guild, rawRoles] = await Promise.all([getGuildInfo(force), getRoles(force)]);
     let members = null;
     let warning: string | undefined;
     try {
       const rawMembers = await getMembers(force);
-      members = rawMembers.map((m) => {
-        const auth = isUserAdminOrHandler(m.roleIds);
-        return {
-          ...m,
-          isAdmin: auth.isAdmin,
-          isBadsideHandler: auth.isBadsideHandler,
-          isStaff: auth.isStaff,
-        };
-      });
+      members = rawMembers
+        .filter((m) => !m.bot)
+        .map((m) => {
+          const auth = isUserAdminOrHandler(m.roleIds);
+          return {
+            ...m,
+            isAdmin: auth.isAdmin,
+            isBadsideHandler: auth.isBadsideHandler,
+            isStaff: auth.isStaff,
+          };
+        });
     } catch (e) {
       if (e instanceof DiscordError && e.code === "MISSING_INTENT") warning = e.message;
       else throw e;
@@ -36,9 +39,9 @@ export async function GET(req: NextRequest) {
       isStaff: r.id === ROLE_IDS.ADMIN || r.id === ROLE_IDS.BADSIDE_HANDLER || r.id === ROLE_IDS.HIGH_COMMAND,
     }));
 
-    const staffMembers = members ? members.filter((m) => m.isStaff) : [];
-    const adminMembers = members ? members.filter((m) => m.isAdmin) : [];
-    const handlerMembers = members ? members.filter((m) => m.isBadsideHandler) : [];
+    const staffMembers = members ? members.filter((m) => !m.bot && m.isStaff) : [];
+    const adminMembers = members ? members.filter((m) => !m.bot && m.isAdmin) : [];
+    const handlerMembers = members ? members.filter((m) => !m.bot && m.isBadsideHandler) : [];
 
     return NextResponse.json({
       configured: true,

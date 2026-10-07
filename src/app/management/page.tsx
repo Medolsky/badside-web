@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { ShieldCheck, ShieldAlert, Users, Search, RefreshCw, KeyRound, Radio } from "lucide-react";
-import { ROLE_IDS } from "@/lib/roles";
+import { ROLE_IDS, isRoleIgnored } from "@/lib/roles";
 import type { DiscordMember, DiscordRole, DiscordGuildInfo } from "@/lib/discord";
 import { PageHeader, Card, StatCard, EmptyState, btnGhost, input } from "@/components/ui";
 
@@ -52,6 +52,7 @@ export default function ManagementPage() {
   const staff = useMemo(() => {
     if (!data?.members) return [];
     return data.members.filter((m) => {
+      if (m.bot) return false;
       const hasAdmin = m.roleIds.includes(ROLE_IDS.ADMIN) || m.roleIds.includes(ROLE_IDS.HIGH_COMMAND);
       const hasHandler = m.roleIds.includes(ROLE_IDS.BADSIDE_HANDLER);
       return hasAdmin || hasHandler;
@@ -121,7 +122,7 @@ export default function ManagementPage() {
         />
         <StatCard
           label="Role Server"
-          value={loading ? "..." : (data?.roles?.length ?? 0)}
+          value={loading ? "..." : (data?.roles?.filter((r) => !isRoleIgnored(r.name, r.managed)).length ?? 0)}
           hint="Role Discord aktif"
           icon={Radio}
         />
@@ -220,7 +221,7 @@ export default function ManagementPage() {
 
               const roleBadges = m.roleIds
                 .map((id) => rolesById.get(id))
-                .filter((r): r is DiscordRole => Boolean(r))
+                .filter((r): r is DiscordRole => Boolean(r && !isRoleIgnored(r.name, r.managed)))
                 .sort((a, b) => b.position - a.position);
 
               return (

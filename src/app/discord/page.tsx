@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { RefreshCw, Search, Bot, Link2, AlertTriangle, MessageSquare, ShieldCheck, Users } from "lucide-react";
 import { store } from "@/lib/store";
-import { ROLE_IDS } from "@/lib/roles";
+import { ROLE_IDS, isRoleIgnored } from "@/lib/roles";
 import type { DiscordGuildInfo, DiscordMember, DiscordRole } from "@/lib/discord";
 import { PageHeader, Card, StatCard, EmptyState, input, btnGhost } from "@/components/ui";
 
@@ -159,7 +159,7 @@ export default function DiscordPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatCard label="Member" value={ok.guild.memberCount.toLocaleString("id-ID")} icon={Users} />
         <StatCard label="Online" value={ok.guild.onlineCount.toLocaleString("id-ID")} icon={Users} tone="green" />
-        <StatCard label="Role" value={ok.roles.length} icon={ShieldCheck} tone="red" />
+        <StatCard label="Role" value={ok.roles.filter((r) => !isRoleIgnored(r.name, r.managed)).length} icon={ShieldCheck} tone="red" />
         <StatCard label="Terhubung FiveM" value={linkedCount} icon={Link2} />
       </div>
 
@@ -191,7 +191,7 @@ export default function DiscordPage() {
           }
           bodyClassName="max-h-[65vh] overflow-y-auto p-2"
         >
-          {ok.roles.map((r) => (
+          {ok.roles.filter((r) => !isRoleIgnored(r.name, r.managed)).map((r) => (
             <button
               key={r.id}
               onClick={() => setRoleFilter(roleFilter === r.id ? null : r.id)}
@@ -290,7 +290,7 @@ export default function DiscordPage() {
               const linked = playerByDiscord.get(m.id);
               const roles = m.roleIds
                 .map((id) => roleById.get(id))
-                .filter((r): r is DiscordRole => Boolean(r))
+                .filter((r): r is DiscordRole => Boolean(r && !isRoleIgnored(r.name, r.managed)))
                 .sort((a, b) => b.position - a.position);
               return (
                 <div key={m.id} className="flex flex-col md:flex-row md:items-center gap-3 px-4 sm:px-5 py-3 hover:bg-[#161616] transition">

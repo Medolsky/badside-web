@@ -166,12 +166,6 @@ export function Tag({ children, tone = "neutral" }: { children: React.ReactNode;
 }
 
 const GROUP_LOGO: Record<string, string> = {
-  polisi: "/logos/police.jpg",
-  "polisi👮🏻‍♂️": "/logos/police.jpg",
-  police: "/logos/police.jpg",
-  lspd: "/logos/police.jpg",
-  ems: "/logos/medical.jpg",
-  medis: "/logos/medical.jpg",
   badside: "/logos/ophelia-logo.png",
   "petinggi-badside": "/logos/ophelia-logo.png",
   "petinggi badside": "/logos/ophelia-logo.png",

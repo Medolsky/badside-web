@@ -5,6 +5,8 @@ const API = "https://discord.com/api/v10";
 const CACHE_TTL_MS = 60_000;
 const MAX_MEMBER_PAGES = 20; // 20 x 1000 = 20k members
 
+import { isRoleIgnored } from "./roles";
+
 export interface DiscordRole {
   id: string;
   name: string;
@@ -148,7 +150,11 @@ export async function getMembers(force = false): Promise<DiscordMember[]> {
     let after = "0";
     for (let page = 0; page < MAX_MEMBER_PAGES; page++) {
       const batch = await discordGet<RawMember[]>(`/guilds/${guildId}/members?limit=1000&after=${after}`);
-      all.push(...batch.map((m) => mapMember(guildId, m)));
+      all.push(
+        ...batch
+          .filter((m) => !m.user.bot)
+          .map((m) => mapMember(guildId, m))
+      );
       if (batch.length < 1000) break;
       after = batch[batch.length - 1].user.id;
     }
@@ -169,7 +175,7 @@ export async function getRoles(force = false): Promise<DiscordRole[]> {
   for (const m of members ?? []) for (const r of m.roleIds) counts.set(r, (counts.get(r) ?? 0) + 1);
 
   return raw
-    .filter((r) => r.id !== guildId) // drop @everyone
+    .filter((r) => r.id !== guildId && !isRoleIgnored(r.name, r.managed)) // drop @everyone, bot roles, police, and unneeded roles
     .map((r) => ({
       id: r.id,
       name: r.name,
