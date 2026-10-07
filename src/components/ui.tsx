@@ -166,11 +166,17 @@ export function Tag({ children, tone = "neutral" }: { children: React.ReactNode;
 }
 
 const GROUP_LOGO: Record<string, string> = {
+  polisi: "/logos/police.jpg",
+  "polisi👮🏻‍♂️": "/logos/police.jpg",
+  police: "/logos/police.jpg",
   lspd: "/logos/police.jpg",
-  "los santos police dept": "/logos/police.jpg",
   ems: "/logos/medical.jpg",
-  "los santos medical services": "/logos/medical.jpg",
-  badside: "/icon-192.png",
+  medis: "/logos/medical.jpg",
+  badside: "/logos/ophelia-logo.png",
+  "petinggi-badside": "/logos/ophelia-logo.png",
+  "petinggi badside": "/logos/ophelia-logo.png",
+  "petinggi badside🔴": "/logos/ophelia-logo.png",
+  "ophelia-badside": "/logos/ophelia-logo.png",
 };
 
 export function GroupLogo({ name, size = "h-11 w-11" }: { name?: string; size?: string }) {

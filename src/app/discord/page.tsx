@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { RefreshCw, Search, Bot, Link2, AlertTriangle, MessageSquare, ShieldCheck, Users } from "lucide-react";
 import { store } from "@/lib/store";
+import { ROLE_IDS } from "@/lib/roles";
 import type { DiscordGuildInfo, DiscordMember, DiscordRole } from "@/lib/discord";
 import { PageHeader, Card, StatCard, EmptyState, input, btnGhost } from "@/components/ui";
 
@@ -32,6 +33,7 @@ export default function DiscordPage() {
   const [data, setData] = useState<Overview | null>(null);
   const [loading, setLoading] = useState(true);
   const [roleFilter, setRoleFilter] = useState<string | null>(null);
+  const [staffFilter, setStaffFilter] = useState<"ALL" | "STAFF" | "HANDLER" | "ADMIN">("ALL");
   const [q, setQ] = useState("");
   const [hideBots, setHideBots] = useState(true);
   const [linkedOnly, setLinkedOnly] = useState(false);
@@ -73,6 +75,22 @@ export default function DiscordPage() {
     return ok.members
       .filter((m) => !hideBots || !m.bot)
       .filter((m) => !roleFilter || m.roleIds.includes(roleFilter))
+      .filter((m) => {
+        if (staffFilter === "STAFF") {
+          return (
+            m.roleIds.includes(ROLE_IDS.ADMIN) ||
+            m.roleIds.includes(ROLE_IDS.BADSIDE_HANDLER) ||
+            m.roleIds.includes(ROLE_IDS.HIGH_COMMAND)
+          );
+        }
+        if (staffFilter === "HANDLER") {
+          return m.roleIds.includes(ROLE_IDS.BADSIDE_HANDLER);
+        }
+        if (staffFilter === "ADMIN") {
+          return m.roleIds.includes(ROLE_IDS.ADMIN) || m.roleIds.includes(ROLE_IDS.HIGH_COMMAND);
+        }
+        return true;
+      })
       .filter((m) => !linkedOnly || playerByDiscord.has(m.id))
       .filter(
         (m) =>
@@ -82,9 +100,9 @@ export default function DiscordPage() {
           m.id.includes(term)
       )
       .sort((a, b) => a.displayName.localeCompare(b.displayName));
-  }, [ok, q, roleFilter, hideBots, linkedOnly, playerByDiscord]);
+  }, [ok, q, roleFilter, staffFilter, hideBots, linkedOnly, playerByDiscord]);
 
-  useEffect(() => setLimit(PAGE), [q, roleFilter, hideBots, linkedOnly]);
+  useEffect(() => setLimit(PAGE), [q, roleFilter, staffFilter, hideBots, linkedOnly]);
 
   if (loading && !data) {
     return <div className="py-16 text-center text-sm text-neutral-500">Menghubungi Discord...</div>;
@@ -193,20 +211,61 @@ export default function DiscordPage() {
         </Card>
 
         <div className="space-y-3 min-w-0">
-          <div className="rounded-2xl bg-[#111111] border border-[#222] p-3 sm:p-4 flex flex-col md:flex-row gap-3 md:items-center">
-            <div className="relative flex-1 min-w-0">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-500" />
-              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari username, nickname, atau ID..." className={`${input} pl-9`} aria-label="Cari member" />
+          <div className="rounded-2xl bg-[#111111] border border-[#222] p-3 sm:p-4 flex flex-col gap-3">
+            <div className="flex flex-col md:flex-row gap-3 md:items-center">
+              <div className="relative flex-1 min-w-0">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-500" />
+                <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari username, nickname, atau ID..." className={`${input} pl-9`} aria-label="Cari member" />
+              </div>
+              <div className="flex flex-wrap items-center gap-4 text-xs text-neutral-300">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={linkedOnly} onChange={(e) => setLinkedOnly(e.target.checked)} className="h-4 w-4 accent-[#E50914]" />
+                  Terhubung FiveM saja
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={hideBots} onChange={(e) => setHideBots(e.target.checked)} className="h-4 w-4 accent-[#E50914]" />
+                  Sembunyikan bot
+                </label>
+              </div>
             </div>
-            <div className="flex flex-wrap items-center gap-4 text-xs text-neutral-300">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={linkedOnly} onChange={(e) => setLinkedOnly(e.target.checked)} className="h-4 w-4 accent-[#E50914]" />
-                Terhubung FiveM saja
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={hideBots} onChange={(e) => setHideBots(e.target.checked)} className="h-4 w-4 accent-[#E50914]" />
-                Sembunyikan bot
-              </label>
+
+            <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[#181818] border border-[#252525] self-start flex-wrap">
+              <button
+                type="button"
+                onClick={() => setStaffFilter("ALL")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                  staffFilter === "ALL" ? "bg-[#E50914] text-white glow-red-sm" : "text-neutral-400 hover:text-white"
+                }`}
+              >
+                Semua Member
+              </button>
+              <button
+                type="button"
+                onClick={() => setStaffFilter("STAFF")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                  staffFilter === "STAFF" ? "bg-[#E50914] text-white glow-red-sm" : "text-neutral-400 hover:text-white"
+                }`}
+              >
+                🛡️ Staff Management
+              </button>
+              <button
+                type="button"
+                onClick={() => setStaffFilter("HANDLER")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                  staffFilter === "HANDLER" ? "bg-[#E50914] text-white glow-red-sm" : "text-neutral-400 hover:text-white"
+                }`}
+              >
+                🛡️ Badside Handler
+              </button>
+              <button
+                type="button"
+                onClick={() => setStaffFilter("ADMIN")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                  staffFilter === "ADMIN" ? "bg-[#E50914] text-white glow-red-sm" : "text-neutral-400 hover:text-white"
+                }`}
+              >
+                🛡️ Admin
+              </button>
             </div>
           </div>
 
@@ -239,8 +298,18 @@ export default function DiscordPage() {
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={m.avatarUrl} alt="" className="h-10 w-10 rounded-xl bg-[#181818] border border-[#2a2a2a]" loading="lazy" />
                     <div className="min-w-0">
-                      <div className="text-sm font-bold text-white truncate flex items-center gap-1.5">
-                        {m.displayName}
+                      <div className="text-sm font-bold text-white truncate flex items-center gap-1.5 flex-wrap">
+                        <span>{m.displayName}</span>
+                        {m.roleIds.includes(ROLE_IDS.BADSIDE_HANDLER) && (
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-[#E50914] text-white glow-red-sm">
+                            HANDLER
+                          </span>
+                        )}
+                        {m.roleIds.includes(ROLE_IDS.ADMIN) && (
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-blue-600 text-white">
+                            ADMIN
+                          </span>
+                        )}
                         {m.bot && <span className="text-[9px] px-1.5 rounded bg-[#2a2a2a] text-neutral-300">BOT</span>}
                       </div>
                       <div className="text-[11px] text-neutral-500 truncate">@{m.username}</div>

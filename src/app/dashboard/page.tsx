@@ -202,21 +202,25 @@ export default function DashboardPage() {
               </Link>
             }
           >
-            <ol className="relative border-l border-[#252525] ml-1.5 space-y-4">
-              {events.map((e) => (
-                <li key={e.id} className="pl-5 relative">
-                  <span className={`absolute -left-[5px] top-1.5 h-2.5 w-2.5 rounded-full ring-4 ring-[#111111] ${EVENT_DOT[e.eventType]}`} />
-                  <div className="flex items-center justify-between gap-2 text-xs">
-                    <Link href={`/players/${e.playerId}`} className="font-bold text-white hover:text-[#FF1E2D] truncate">
-                      {e.playerName}
-                    </Link>
-                    <span className="font-mono-telemetry text-[11px] text-neutral-500 shrink-0">{e.timestamp}</span>
-                  </div>
-                  <div className="text-[11px] font-semibold text-neutral-300 mt-0.5">{EVENT_LABEL[e.eventType]}</div>
-                  <p className="text-[11px] text-neutral-500 mt-0.5 line-clamp-2">{e.eventData}</p>
-                </li>
-              ))}
-            </ol>
+            {events.length === 0 ? (
+              <EmptyState icon={Activity} title="Belum ada aktivitas" desc="Menunggu event player dari server FiveM." />
+            ) : (
+              <ol className="relative border-l border-[#252525] ml-1.5 space-y-4">
+                {events.map((e) => (
+                  <li key={e.id} className="pl-5 relative">
+                    <span className={`absolute -left-[5px] top-1.5 h-2.5 w-2.5 rounded-full ring-4 ring-[#111111] ${EVENT_DOT[e.eventType]}`} />
+                    <div className="flex items-center justify-between gap-2 text-xs">
+                      <Link href={`/players/${e.playerId}`} className="font-bold text-white hover:text-[#FF1E2D] truncate">
+                        {e.playerName}
+                      </Link>
+                      <span className="font-mono-telemetry text-[11px] text-neutral-500 shrink-0">{e.timestamp}</span>
+                    </div>
+                    <div className="text-[11px] font-semibold text-neutral-300 mt-0.5">{EVENT_LABEL[e.eventType]}</div>
+                    <p className="text-[11px] text-neutral-500 mt-0.5 line-clamp-2">{e.eventData}</p>
+                  </li>
+                ))}
+              </ol>
+            )}
           </Card>
 
           <div className="rounded-2xl bg-[#111111] border border-[#222] p-4 sm:p-5 flex items-start gap-3">

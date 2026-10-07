@@ -6,7 +6,8 @@ import {
   AlertNotification, 
   AuditRecord, 
   ServerOverview,
-  UserRole 
+  UserRole,
+  Character
 } from "@/types";
 import { 
   initialPlayers, 
@@ -193,7 +194,7 @@ export const store = {
     const player = players.find(p => p.id === playerId);
     const timestamp = new Date().toISOString();
     if (player) {
-      const activeChar = player.characters.find(c => c.isActive) || player.characters[0];
+      const activeChar = player.characters.find((c: Character) => c.isActive) || player.characters[0];
       const charName = activeChar ? activeChar.fullName : "Unknown";
 
       this.logAuditAction({

@@ -121,7 +121,11 @@ export default function PlayersPage() {
 
       <Card bodyClassName="">
         {filtered.length === 0 ? (
-          <EmptyState icon={Users} title="Player tidak ditemukan" desc="Coba ganti kata kunci atau filter." />
+          <EmptyState
+            icon={Users}
+            title={players.length === 0 ? "Belum ada player terhubung" : "Player tidak ditemukan"}
+            desc={players.length === 0 ? "Data player FiveM akan otomatis muncul saat resource badside_intel mengirim heartbeat." : "Coba ganti kata kunci atau filter."}
+          />
         ) : (
           <>
             {/* Desktop table */}

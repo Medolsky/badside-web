@@ -134,12 +134,13 @@ export default function WatchlistPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-3">
               {items.map((w) => {
                 const p = w.targetType === "PLAYER" ? players.find((ply) => ply.id === w.targetId) : undefined;
-                const href = w.targetType === "GROUP" ? `/groups/badside` : `/players/${w.targetId}`;
+                const slug = w.targetId.replace("grp-", "");
+                const href = w.targetType === "GROUP" ? `/groups/${slug}` : `/players/${w.targetId}`;
                 return (
                   <div key={w.id} className="rounded-2xl bg-[#111111] border border-[#222] hover:border-[#E50914]/50 p-4 sm:p-5 transition flex flex-col">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-3 min-w-0">
-                        {w.targetType === "GROUP" ? <GroupLogo name="badside" /> : <Avatar name={w.targetName} online={p?.isOnline} />}
+                        {w.targetType === "GROUP" ? <GroupLogo name={w.targetName} /> : <Avatar name={w.targetName} online={p?.isOnline} />}
                         <div className="min-w-0">
                           <div className="text-sm font-bold text-white truncate">{w.targetName}</div>
                           <div className="flex flex-wrap gap-1.5 mt-1">

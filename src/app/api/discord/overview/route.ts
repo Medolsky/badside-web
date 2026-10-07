@@ -1,24 +1,59 @@
 import { NextRequest, NextResponse } from "next/server";
 import { DiscordError, getGuildInfo, getMembers, getRoles, isDiscordConfigured } from "@/lib/discord";
+import { ROLE_IDS, isUserAdminOrHandler } from "@/lib/roles";
 
 // GET /api/discord/overview[?refresh=1]
-// If the member list is blocked (Server Members Intent off), guild + roles are still returned with members: null.
+// Returns guild, real roles, and real members with verified Admin & Badside Handler flags
 export async function GET(req: NextRequest) {
   if (!isDiscordConfigured()) {
     return NextResponse.json({ configured: false }, { status: 200 });
   }
   const force = req.nextUrl.searchParams.get("refresh") === "1";
   try {
-    const [guild, roles] = await Promise.all([getGuildInfo(force), getRoles(force)]);
+    const [guild, rawRoles] = await Promise.all([getGuildInfo(force), getRoles(force)]);
     let members = null;
     let warning: string | undefined;
     try {
-      members = await getMembers();
+      const rawMembers = await getMembers(force);
+      members = rawMembers.map((m) => {
+        const auth = isUserAdminOrHandler(m.roleIds);
+        return {
+          ...m,
+          isAdmin: auth.isAdmin,
+          isBadsideHandler: auth.isBadsideHandler,
+          isStaff: auth.isStaff,
+        };
+      });
     } catch (e) {
       if (e instanceof DiscordError && e.code === "MISSING_INTENT") warning = e.message;
       else throw e;
     }
-    return NextResponse.json({ configured: true, guild, roles, members, warning, fetchedAt: new Date().toISOString() });
+
+    const roles = rawRoles.map((r) => ({
+      ...r,
+      isAdmin: r.id === ROLE_IDS.ADMIN || r.id === ROLE_IDS.HIGH_COMMAND,
+      isBadsideHandler: r.id === ROLE_IDS.BADSIDE_HANDLER,
+      isStaff: r.id === ROLE_IDS.ADMIN || r.id === ROLE_IDS.BADSIDE_HANDLER || r.id === ROLE_IDS.HIGH_COMMAND,
+    }));
+
+    const staffMembers = members ? members.filter((m) => m.isStaff) : [];
+    const adminMembers = members ? members.filter((m) => m.isAdmin) : [];
+    const handlerMembers = members ? members.filter((m) => m.isBadsideHandler) : [];
+
+    return NextResponse.json({
+      configured: true,
+      guild,
+      roles,
+      members,
+      management: {
+        adminCount: adminMembers.length,
+        handlerCount: handlerMembers.length,
+        totalStaffCount: staffMembers.length,
+        staffList: staffMembers,
+      },
+      warning,
+      fetchedAt: new Date().toISOString(),
+    });
   } catch (e) {
     if (e instanceof DiscordError) {
       return NextResponse.json({ configured: true, error: e.message, code: e.code }, { status: e.status });

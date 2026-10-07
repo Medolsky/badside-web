@@ -14,6 +14,7 @@ import {
   BarChart3,
   Network,
   ShieldAlert,
+  ShieldCheck,
   Settings,
   ChevronDown,
   LayoutGrid,
@@ -51,6 +52,7 @@ const SECTIONS: { title: string; tone?: "red" | "amber"; items: NavItem[] }[] = 
     title: "Admin",
     tone: "amber",
     items: [
+      { name: "Management Staff", href: "/management", icon: ShieldCheck },
       { name: "Audit Log", href: "/audit-log", icon: ShieldAlert },
       { name: "Pengaturan", href: "/settings", icon: Settings },
     ],
