@@ -31,44 +31,40 @@ export function DiscordMemberRoles({ discordId }: { discordId: string }) {
     };
   }, [discordId]);
 
-  if (state.status === "loading") return <p className="text-[10px] text-slate-500 pt-1">Memuat role Discord...</p>;
+  if (state.status === "loading") return <p className="text-[11px] text-neutral-500 pt-1">Memuat role Discord...</p>;
   if (state.status === "not-configured") {
     return (
-      <p className="text-[10px] text-slate-500 pt-1">
-        Role belum bisa dibaca. <a href="/discord" className="text-cyan-400 hover:underline">Hubungkan bot Discord</a>
+      <p className="text-[11px] text-neutral-500 pt-1">
+        Role belum bisa dibaca. <a href="/discord" className="text-[#FF1E2D] font-semibold hover:underline">Hubungkan bot Discord</a>
       </p>
     );
   }
-  if (state.status === "not-in-guild") return <p className="text-[10px] text-amber-400 pt-1">Tidak ada di server Discord</p>;
-  if (state.status === "error") return <p className="text-[10px] text-rose-400 pt-1">{state.message}</p>;
+  if (state.status === "not-in-guild") return <p className="text-[11px] text-amber-400 pt-1">Tidak ada di server Discord</p>;
+  if (state.status === "error") return <p className="text-[11px] text-[#FF1E2D] pt-1">{state.message}</p>;
 
   const roles = [...state.roles].sort((a, b) => b.position - a.position);
   return (
-    <div className="space-y-1.5 pt-1">
+    <div className="space-y-2 pt-2">
       <div className="flex items-center gap-2">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={state.member.avatarUrl} alt="" className="w-5 h-5 rounded-full" />
-        <span className="text-slate-200">{state.member.displayName}</span>
-        <span className="text-[10px] text-slate-400">@{state.member.username}</span>
+        <img src={state.member.avatarUrl} alt="" className="h-6 w-6 rounded-lg" />
+        <span className="font-semibold text-white">{state.member.displayName}</span>
+        <span className="text-[11px] text-neutral-500">@{state.member.username}</span>
       </div>
       <div className="flex flex-wrap gap-1">
-        {roles.length === 0 && <span className="text-[10px] text-slate-500">Tidak punya role</span>}
+        {roles.length === 0 && <span className="text-[11px] text-neutral-500">Tidak punya role</span>}
         {roles.map((r) => (
           <span
             key={r.id}
-            className="px-1.5 py-0.5 rounded text-[10px] border"
-            style={{
-              color: r.color || "#CBD5E1",
-              borderColor: `${r.color || "#64748B"}55`,
-              backgroundColor: `${r.color || "#64748B"}14`,
-            }}
+            className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-[#181818] border border-[#2a2a2a] text-neutral-200"
           >
-            @{r.name}
+            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: r.color || "#A3A3A3" }} />
+            {r.name}
           </span>
         ))}
       </div>
-      <p className="text-[10px] text-slate-500">
-        Join server {new Date(state.member.joinedAt).toLocaleDateString("id-ID")}
+      <p className="text-[11px] text-neutral-500">
+        Gabung server {new Date(state.member.joinedAt).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}
       </p>
     </div>
   );

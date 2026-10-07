@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Search, X, User, Shield, Terminal, ArrowRight, Crosshair } from "lucide-react";
+import { Search, X, ChevronRight } from "lucide-react";
 import { store } from "@/lib/store";
 import { Player } from "@/types";
+import { Avatar, PriorityBadge } from "./ui";
 
 interface OmnibarModalProps {
   isOpen: boolean;
@@ -15,147 +16,127 @@ export function OmnibarModal({ isOpen, onClose }: OmnibarModalProps) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [players, setPlayers] = useState<Player[]>([]);
+  const [active, setActive] = useState(0);
 
   useEffect(() => {
     if (isOpen) {
       setPlayers(store.getPlayers());
+      setQuery("");
+      setActive(0);
     }
   }, [isOpen]);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        onClose();
-      }
-    };
-    if (isOpen) {
-      window.addEventListener("keydown", handleKeyDown);
-    }
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]);
 
   const filtered = useMemo(() => {
     if (!query.trim()) return players.slice(0, 6);
     const q = query.toLowerCase().trim();
-
     return players.filter((p) => {
-      const matchLicense = p.license.toLowerCase().includes(q);
-      const matchSteam = p.steam?.toLowerCase().includes(q);
-      const matchDiscord = p.discordId?.toLowerCase().includes(q);
-      const matchServerId = p.currentServerId?.toString() === q;
-      const matchChar = p.characters.some(
-        (c) =>
-          c.fullName.toLowerCase().includes(q) ||
-          c.characterId.toString().includes(q) ||
-          c.faction?.toLowerCase().includes(q) ||
-          c.job.toLowerCase().includes(q)
+      return (
+        p.license.toLowerCase().includes(q) ||
+        p.steam?.toLowerCase().includes(q) ||
+        p.discordId?.toLowerCase().includes(q) ||
+        p.currentServerId?.toString() === q ||
+        p.characters.some(
+          (c) =>
+            c.fullName.toLowerCase().includes(q) ||
+            c.characterId.toString().includes(q) ||
+            c.faction?.toLowerCase().includes(q) ||
+            c.job.toLowerCase().includes(q)
+        )
       );
-      return matchLicense || matchSteam || matchDiscord || matchServerId || matchChar;
     });
   }, [query, players]);
+
+  const go = (p?: Player) => {
+    if (!p) return;
+    router.push(`/players/${p.id}`);
+    onClose();
+  };
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      else if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setActive((a) => Math.min(a + 1, filtered.length - 1));
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setActive((a) => Math.max(a - 1, 0));
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        go(filtered[active]);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, onClose, filtered, active]);
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
-      <div 
-        className="w-full max-w-2xl bg-[#12161F] border border-[#2A3546] rounded-xl shadow-2xl overflow-hidden shadow-cyan-950/20"
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-black/80 backdrop-blur-sm" onClick={onClose}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Cari player"
+        className="w-full max-w-xl bg-[#111111] border border-[#2a2a2a] rounded-2xl shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Search Input Bar */}
-        <div className="flex items-center px-4 py-3.5 border-b border-[#232B38] bg-[#0E1218]">
-          <Search className="w-5 h-5 text-cyan-400 mr-3 shrink-0" />
+        <div className="flex items-center gap-3 px-4 py-3.5 border-b border-[#1f1f1f]">
+          <Search className="h-5 w-5 text-[#FF1E2D] shrink-0" />
           <input
             type="text"
-            placeholder="Search by IC Name, Character #CID, Steam Hex, Discord ID, License, Server ID..."
-            className="w-full bg-transparent text-sm text-slate-100 placeholder-slate-400 focus:outline-none font-mono-telemetry"
+            placeholder="Ketik nama IC, CID, ID server, Steam, atau Discord..."
+            className="w-full bg-transparent text-sm text-white placeholder-neutral-500 outline-none"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setActive(0);
+            }}
             autoFocus
           />
-          <button
-            onClick={onClose}
-            className="p-1 rounded text-slate-400 hover:text-slate-200 hover:bg-[#1C2433] transition-colors"
-          >
-            <X className="w-4 h-4" />
+          <button onClick={onClose} className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-[#1f1f1f]" aria-label="Tutup">
+            <X className="h-4 w-4" />
           </button>
         </div>
 
-        {/* Results List */}
-        <div className="max-h-96 overflow-y-auto p-2 space-y-1 divide-y divide-[#1A212D]">
+        <div className="max-h-96 overflow-y-auto p-2">
           {filtered.length === 0 ? (
-            <div className="py-8 text-center text-xs text-slate-400 font-mono">
-              NO MATCH FOUND FOR "{query}". CHECK LICENSE OR STEAM FORMAT.
-            </div>
+            <div className="py-10 text-center text-sm text-neutral-500">Tidak ada player yang cocok dengan &quot;{query}&quot;.</div>
           ) : (
-            filtered.map((player) => {
-              const activeChar = player.characters.find((c) => c.isActive) || player.characters[0];
+            filtered.map((p, i) => {
+              const c = p.characters.find((ch) => ch.isActive) || p.characters[0];
               return (
-                <div
-                  key={player.id}
-                  onClick={() => {
-                    router.push(`/players/${player.id}`);
-                    onClose();
-                  }}
-                  className="flex items-center justify-between p-3 rounded-lg hover:bg-[#1A2230] cursor-pointer transition-all group"
+                <button
+                  key={p.id}
+                  onClick={() => go(p)}
+                  onMouseEnter={() => setActive(i)}
+                  className={`w-full flex items-center justify-between gap-3 p-2.5 rounded-xl text-left transition ${i === active ? "bg-[#1a1a1a]" : ""}`}
                 >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`w-9 h-9 rounded flex items-center justify-center font-mono font-bold text-xs ${
-                        player.isOnline
-                          ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
-                          : "bg-slate-800 text-slate-400 border border-slate-700"
-                      }`}
-                    >
-                      {player.isOnline ? `ID ${player.currentServerId}` : "OFF"}
-                    </div>
-
-                    <div>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Avatar name={c?.fullName} online={p.isOnline} />
+                    <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-sm text-slate-100 group-hover:text-cyan-400 transition-colors">
-                          {activeChar?.fullName || "Unregistered Character"}
-                        </span>
-                        <span className="text-[11px] font-mono px-1.5 py-0.2 rounded bg-[#1C2533] text-cyan-300 border border-cyan-800/40">
-                          #{activeChar?.characterId}
-                        </span>
-                        {player.isWatchlisted && (
-                          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30 flex items-center gap-1">
-                            <Crosshair className="w-2.5 h-2.5" />
-                            {player.watchlistPriority}
-                          </span>
-                        )}
-                        {activeChar?.faction && (
-                          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                            {activeChar.faction}
-                          </span>
-                        )}
+                        <span className={`text-sm font-bold truncate ${i === active ? "text-[#FF1E2D]" : "text-white"}`}>{c?.fullName || "Tanpa nama"}</span>
+                        {p.isWatchlisted && <PriorityBadge priority={p.watchlistPriority} short />}
                       </div>
-
-                      <div className="text-[11px] text-slate-400 font-mono mt-0.5 flex items-center gap-3">
-                        <span>Loc: {player.currentArea || "Offline"}</span>
-                        <span>Discord: {player.discordId ? "Linked" : "No"}</span>
-                        <span>Steam: {player.steam ? "Linked" : "No"}</span>
+                      <div className="text-[11px] text-neutral-500 truncate">
+                        CID #{c?.characterId} · {c?.faction || "Tanpa grup"} · {p.isOnline ? `Di kota #${p.currentServerId}` : "Offline"}
                       </div>
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-2 text-xs font-mono text-slate-400 group-hover:text-cyan-400">
-                    <span>Inspect</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </div>
-                </div>
+                  <ChevronRight className="h-4 w-4 text-neutral-600 shrink-0" />
+                </button>
               );
             })
           )}
         </div>
 
-        {/* Footer shortcuts */}
-        <div className="px-4 py-2 bg-[#0E1218] border-t border-[#232B38] flex items-center justify-between text-[11px] text-slate-400 font-mono">
-          <div className="flex items-center gap-3">
-            <span>[ESC] Close</span>
-            <span>[ENTER] Select</span>
-          </div>
-          <div className="text-cyan-400">SOC Fast Identifier Cross-Reference</div>
+        <div className="px-4 py-2.5 border-t border-[#1f1f1f] flex items-center gap-4 text-[11px] text-neutral-500">
+          <span><kbd className="px-1.5 py-0.5 rounded bg-[#1a1a1a] border border-[#2a2a2a]">↑↓</kbd> pilih</span>
+          <span><kbd className="px-1.5 py-0.5 rounded bg-[#1a1a1a] border border-[#2a2a2a]">Enter</kbd> buka</span>
+          <span><kbd className="px-1.5 py-0.5 rounded bg-[#1a1a1a] border border-[#2a2a2a]">Esc</kbd> tutup</span>
         </div>
       </div>
     </div>

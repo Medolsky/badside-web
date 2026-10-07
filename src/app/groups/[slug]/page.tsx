@@ -2,9 +2,10 @@
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ChevronRight, Clock } from "lucide-react";
+import { ChevronRight, Radio, Moon, UsersRound, Clock, Users, Activity } from "lucide-react";
 import { store, formatDuration } from "@/lib/store";
 import { Group } from "@/types";
+import { PageHeader, Card, Avatar, GroupLogo, EmptyState, StatCard, PriorityBadge } from "@/components/ui";
 
 export default function GroupDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
@@ -19,119 +20,89 @@ export default function GroupDetailPage({ params }: { params: Promise<{ slug: st
     return () => clearInterval(i);
   }, [slug]);
 
-  if (!loaded) return <div className="p-12 text-center text-xs font-mono text-slate-400">Loading group...</div>;
+  if (!loaded) return <div className="py-16 text-center text-sm text-neutral-500">Memuat grup...</div>;
   if (!group) {
     return (
-      <div className="p-12 text-center text-xs font-mono text-slate-400 space-y-3">
-        <p>Grup &quot;{slug}&quot; tidak ditemukan.</p>
-        <Link href="/groups" className="text-cyan-400 hover:underline">Kembali ke daftar grup</Link>
+      <div className="py-16 text-center space-y-3">
+        <p className="text-sm text-neutral-400">Grup &quot;{slug}&quot; tidak ditemukan.</p>
+        <Link href="/groups" className="text-sm font-semibold text-[#FF1E2D] hover:underline">
+          Kembali ke daftar grup
+        </Link>
       </div>
     );
   }
 
   const online = group.members.filter((m) => m.isOnline);
   const offline = group.members.filter((m) => !m.isOnline);
-  const mostActive = [...online].sort(
-    (a, b) => (b.currentSessionDurationSec || 0) - (a.currentSessionDurationSec || 0)
-  )[0];
-  const lastOnline = [...online].sort(
-    (a, b) => (a.currentSessionDurationSec || 0) - (b.currentSessionDurationSec || 0)
-  )[0];
+  const mostActive = [...online].sort((a, b) => (b.currentSessionDurationSec || 0) - (a.currentSessionDurationSec || 0))[0];
 
   return (
-    <div className="p-6 space-y-6 max-w-6xl">
-      <Link href="/groups" className="text-xs font-mono text-slate-400 hover:text-cyan-400 flex items-center gap-1.5 w-fit">
-        <ArrowLeft className="w-3.5 h-3.5" /> All groups
-      </Link>
+    <div className="space-y-6 max-w-6xl">
+      <PageHeader title={group.name} back={{ href: "/groups", label: "Semua grup" }} subtitle={group.description}>
+        <PriorityBadge priority={group.priority} />
+      </PageHeader>
 
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: group.color }} />
-            <h1 className="text-2xl font-bold font-mono text-slate-100">{group.name}</h1>
-            <span className="text-xs font-mono text-slate-400">{group.tag}</span>
+      <div className="flex items-center gap-4 rounded-2xl bg-[#111111] border border-[#222] p-4 sm:p-5">
+        <GroupLogo name={group.slug} size="h-16 w-16" />
+        <div className="text-xs text-neutral-400 space-y-1">
+          <div>
+            Tag: <span className="text-white font-semibold">{group.tag || "—"}</span>
           </div>
-          <p className="text-xs text-slate-400 font-mono mt-1 max-w-2xl">{group.description}</p>
-        </div>
-        <div className="text-xs font-mono text-slate-400">
-          Discord role: <span className="text-slate-200">{group.discordRoleId ? `••••${group.discordRoleId.slice(-4)}` : "—"}</span>
+          <div>
+            Role Discord: <span className="text-white font-mono-telemetry">{group.discordRoleId ? `••••${group.discordRoleId.slice(-4)}` : "Belum diatur"}</span>
+          </div>
         </div>
       </div>
 
-      {/* Overview strip */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-px rounded-xl overflow-hidden border border-[#232B38] bg-[#232B38] text-xs font-mono">
-        {[
-          { label: "Online", value: `${online.length} / ${group.members.length || group.onlineCount}`, cls: "text-emerald-400" },
-          { label: "Playtime today", value: formatDuration(group.totalSessionTodaySec || 0).slice(0, 7), cls: "text-slate-100" },
-          { label: "Last activity", value: group.lastActivity || "—", cls: "text-cyan-300" },
-          { label: "Most active", value: mostActive?.characterName || "—", cls: "text-slate-100" },
-          { label: "Last member online", value: lastOnline?.characterName || "—", cls: "text-slate-100" },
-        ].map((s) => (
-          <div key={s.label} className="bg-[#12161F] p-4">
-            <span className="text-[10px] uppercase tracking-wider text-slate-400 block">{s.label}</span>
-            <span className={`text-base font-bold mt-1 block truncate ${s.cls}`}>{s.value}</span>
-          </div>
-        ))}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <StatCard label="Sedang di kota" value={`${online.length || group.onlineCount || 0}`} hint={group.members.length ? `dari ${group.members.length} anggota` : undefined} icon={Users} tone="green" />
+        <StatCard label="Total main hari ini" value={formatDuration(group.totalSessionTodaySec || 0).slice(0, 7)} icon={Clock} />
+        <StatCard label="Aktivitas terakhir" value={group.lastActivity || "—"} icon={Activity} />
+        <StatCard label="Paling lama online" value={<span className="text-lg sm:text-xl">{mostActive?.characterName || "—"}</span>} icon={Radio} tone="red" />
       </div>
 
       {group.members.length === 0 ? (
-        <div className="p-6 rounded-xl border border-dashed border-[#232B38] text-xs font-mono text-slate-400">
-          Anggota grup ini belum disinkronkan. Data akan terisi otomatis setelah resource FiveM mengirim job/faction player.
-        </div>
+        <Card>
+          <EmptyState icon={UsersRound} title="Anggota belum tersinkron" desc="Data terisi otomatis setelah resource FiveM mengirim job/faction player." />
+        </Card>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <section className="space-y-3">
-            <h2 className="text-xs font-bold font-mono uppercase tracking-wide text-emerald-400 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-radar-dot" /> Current sessions ({online.length})
-            </h2>
-            <div className="rounded-xl border border-[#232B38] bg-[#12161F] divide-y divide-[#1A212D]">
-              {online.map((m) => (
-                <Link
-                  key={m.id}
-                  href={`/players/${m.playerId}`}
-                  className="flex items-center justify-between p-3 hover:bg-[#161D29] transition-colors text-xs font-mono"
-                >
-                  <div>
-                    <div className="text-slate-100 font-semibold">
-                      {m.characterName} <span className="text-cyan-300">#{m.characterId}</span>
+          <Card title={`Di kota (${online.length})`} icon={Radio} bodyClassName="divide-y divide-[#1a1a1a]">
+            {online.length === 0 && <EmptyState icon={Radio} title="Tidak ada yang online" />}
+            {online.map((m) => (
+              <Link key={m.id} href={`/players/${m.playerId}`} className="flex items-center justify-between gap-3 px-4 sm:px-5 py-3 hover:bg-[#161616] transition group">
+                <div className="flex items-center gap-3 min-w-0">
+                  <Avatar name={m.characterName} online />
+                  <div className="min-w-0">
+                    <div className="text-sm font-bold text-white group-hover:text-[#FF1E2D] transition truncate">{m.characterName}</div>
+                    <div className="text-[11px] text-neutral-500 truncate">
+                      {m.roleTitle} · CID #{m.characterId}
                     </div>
-                    <div className="text-[11px] text-slate-400">{m.roleTitle}</div>
                   </div>
-                  <div className="flex items-center gap-2 text-emerald-300 font-bold font-mono-telemetry">
-                    <Clock className="w-3.5 h-3.5" />
-                    {formatDuration((m.currentSessionDurationSec || 0) + tick)}
-                    <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </section>
+                </div>
+                <div className="text-right shrink-0">
+                  <div className="text-[10px] uppercase tracking-wider text-neutral-500">Lama di kota</div>
+                  <div className="font-mono-telemetry font-bold text-[#FF1E2D] text-sm">{formatDuration((m.currentSessionDurationSec || 0) + tick)}</div>
+                </div>
+              </Link>
+            ))}
+          </Card>
 
-          <section className="space-y-3">
-            <h2 className="text-xs font-bold font-mono uppercase tracking-wide text-slate-400">
-              Offline ({offline.length})
-            </h2>
-            <div className="rounded-xl border border-[#232B38] bg-[#12161F] divide-y divide-[#1A212D]">
-              {offline.length === 0 && (
-                <div className="p-3 text-xs font-mono text-slate-400">Semua anggota yang terlacak sedang online.</div>
-              )}
-              {offline.map((m) => (
-                <Link
-                  key={m.id}
-                  href={`/players/${m.playerId}`}
-                  className="flex items-center justify-between p-3 hover:bg-[#161D29] transition-colors text-xs font-mono"
-                >
-                  <div>
-                    <div className="text-slate-300 font-semibold">
-                      {m.characterName} <span className="text-slate-400">#{m.characterId}</span>
-                    </div>
-                    <div className="text-[11px] text-slate-400">{m.roleTitle}</div>
+          <Card title={`Offline (${offline.length})`} icon={Moon} bodyClassName="divide-y divide-[#1a1a1a]">
+            {offline.length === 0 && <EmptyState icon={Moon} title="Semua anggota sedang online" />}
+            {offline.map((m) => (
+              <Link key={m.id} href={`/players/${m.playerId}`} className="flex items-center justify-between gap-3 px-4 sm:px-5 py-3 hover:bg-[#161616] transition group">
+                <div className="flex items-center gap-3 min-w-0">
+                  <Avatar name={m.characterName} online={false} />
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold text-neutral-300 truncate">{m.characterName}</div>
+                    <div className="text-[11px] text-neutral-500 truncate">{m.roleTitle}</div>
                   </div>
-                  <span className="text-slate-400">OFFLINE</span>
-                </Link>
-              ))}
-            </div>
-          </section>
+                </div>
+                <ChevronRight className="h-4 w-4 text-neutral-600 group-hover:text-white" />
+              </Link>
+            ))}
+          </Card>
         </div>
       )}
     </div>

@@ -2,20 +2,16 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { CheckCheck, Check } from "lucide-react";
+import { CheckCheck, Check, Bell, AlertTriangle, Info, Siren, ChevronRight } from "lucide-react";
 import { store } from "@/lib/store";
 import { AlertNotification } from "@/types";
+import { PageHeader, EmptyState, btnGhost } from "@/components/ui";
 
-const sev: Record<AlertNotification["severity"], string> = {
-  CRITICAL: "border-l-rose-500 bg-rose-500/5",
-  WARNING: "border-l-amber-500 bg-amber-500/5",
-  INFO: "border-l-cyan-500 bg-cyan-500/5",
-};
-const sevText: Record<AlertNotification["severity"], string> = {
-  CRITICAL: "text-rose-300",
-  WARNING: "text-amber-300",
-  INFO: "text-cyan-300",
-};
+const SEV = {
+  CRITICAL: { label: "Penting", icon: Siren, box: "border-l-[#E50914]", iconCls: "bg-[#E50914]/15 text-[#FF1E2D] border-[#E50914]/30" },
+  WARNING: { label: "Peringatan", icon: AlertTriangle, box: "border-l-amber-500", iconCls: "bg-amber-500/10 text-amber-400 border-amber-500/30" },
+  INFO: { label: "Info", icon: Info, box: "border-l-neutral-500", iconCls: "bg-[#1a1a1a] text-neutral-300 border-[#2a2a2a]" },
+} as const;
 
 export default function AlertsPage() {
   const [alerts, setAlerts] = useState<AlertNotification[]>([]);
@@ -25,63 +21,71 @@ export default function AlertsPage() {
   const unread = alerts.filter((a) => !a.isRead).length;
 
   return (
-    <div className="p-6 space-y-6 max-w-4xl">
-      <div className="flex items-end justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold font-mono tracking-wide text-slate-100 uppercase">Alerts & Dispatch</h1>
-          <p className="text-xs text-slate-400 font-mono mt-0.5">{unread} alert belum dibaca</p>
-        </div>
+    <div className="space-y-6 max-w-4xl">
+      <PageHeader title="Notifikasi" icon={Bell} subtitle={unread ? `${unread} notifikasi belum dibaca` : "Semua notifikasi sudah dibaca"}>
         <button
           onClick={() => {
             store.dismissAllAlerts();
             refresh();
           }}
           disabled={unread === 0}
-          className="px-3 py-1.5 rounded-lg bg-[#141A24] border border-[#232B38] text-xs font-mono text-slate-300 hover:text-slate-100 disabled:opacity-40 flex items-center gap-1.5"
+          className={btnGhost}
         >
-          <CheckCheck className="w-3.5 h-3.5" /> Mark all read
+          <CheckCheck className="h-4 w-4" /> Tandai semua dibaca
         </button>
-      </div>
+      </PageHeader>
 
-      <div className="space-y-2">
-        {alerts.map((a) => (
-          <div
-            key={a.id}
-            className={`p-4 rounded-lg border border-[#232B38] border-l-4 ${sev[a.severity]} ${a.isRead ? "opacity-60" : ""}`}
-          >
-            <div className="flex items-start justify-between gap-3 text-xs font-mono">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className={`font-bold ${sevText[a.severity]}`}>{a.title}</span>
-                  <span className="text-[10px] text-slate-400">{a.severity}</span>
-                  {!a.isRead && <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />}
+      {alerts.length === 0 ? (
+        <div className="rounded-2xl bg-[#111111] border border-[#222]">
+          <EmptyState icon={Bell} title="Belum ada notifikasi" />
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {alerts.map((a) => {
+            const s = SEV[a.severity];
+            const Icon = s.icon;
+            return (
+              <div
+                key={a.id}
+                className={`rounded-2xl bg-[#111111] border border-[#222] border-l-4 ${s.box} p-4 flex items-start gap-3 transition ${a.isRead ? "opacity-55" : ""}`}
+              >
+                <div className={`h-10 w-10 rounded-xl border flex items-center justify-center shrink-0 ${s.iconCls}`}>
+                  <Icon className="h-5 w-5" />
                 </div>
-                <p className="text-slate-300">{a.message}</p>
-                <div className="text-[11px] text-slate-400 flex gap-3">
-                  <span>{new Date(a.createdAt).toLocaleTimeString("id-ID")}</span>
-                  {a.playerId && (
-                    <Link href={`/players/${a.playerId}`} className="text-cyan-400 hover:underline">
-                      Open player
-                    </Link>
-                  )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-bold text-white">{a.title}</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">{s.label}</span>
+                    {!a.isRead && <span className="h-2 w-2 rounded-full bg-[#E50914]" aria-label="Belum dibaca" />}
+                  </div>
+                  <p className="text-xs text-neutral-300 mt-1">{a.message}</p>
+                  <div className="flex items-center gap-4 mt-2 text-[11px] text-neutral-500">
+                    <span className="font-mono-telemetry">{new Date(a.createdAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</span>
+                    {a.playerId && (
+                      <Link href={`/players/${a.playerId}`} className="font-semibold text-neutral-300 hover:text-[#FF1E2D] flex items-center gap-0.5">
+                        Lihat player <ChevronRight className="h-3 w-3" />
+                      </Link>
+                    )}
+                  </div>
                 </div>
+                {!a.isRead && (
+                  <button
+                    onClick={() => {
+                      store.markAlertRead(a.id);
+                      refresh();
+                    }}
+                    className="h-9 w-9 rounded-xl border border-[#2a2a2a] bg-[#161616] text-neutral-400 hover:text-green-400 hover:border-green-500/40 flex items-center justify-center shrink-0 transition"
+                    aria-label="Tandai dibaca"
+                    title="Tandai dibaca"
+                  >
+                    <Check className="h-4 w-4" />
+                  </button>
+                )}
               </div>
-              {!a.isRead && (
-                <button
-                  onClick={() => {
-                    store.markAlertRead(a.id);
-                    refresh();
-                  }}
-                  className="p-1.5 rounded border border-[#232B38] text-slate-400 hover:text-emerald-300 hover:border-emerald-500/40"
-                  title="Mark as read"
-                >
-                  <Check className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

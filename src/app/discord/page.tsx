@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { RefreshCw, Search, Bot, Link2, AlertTriangle } from "lucide-react";
+import { RefreshCw, Search, Bot, Link2, AlertTriangle, MessageSquare, ShieldCheck, Users } from "lucide-react";
 import { store } from "@/lib/store";
 import type { DiscordGuildInfo, DiscordMember, DiscordRole } from "@/lib/discord";
+import { PageHeader, Card, StatCard, EmptyState, input, btnGhost } from "@/components/ui";
 
 type Overview =
   | { configured: false }
@@ -12,6 +13,20 @@ type Overview =
   | { configured: true; guild: DiscordGuildInfo; roles: DiscordRole[]; members: DiscordMember[] | null; warning?: string; fetchedAt: string };
 
 const PAGE = 100;
+
+function RoleChip({ role, onClick }: { role: DiscordRole; onClick?: () => void }) {
+  const color = role.color || "#A3A3A3";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-[#181818] border border-[#2a2a2a] text-neutral-200 hover:border-[#444] transition"
+    >
+      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
+      {role.name}
+    </button>
+  );
+}
 
 export default function DiscordPage() {
   const [data, setData] = useState<Overview | null>(null);
@@ -72,20 +87,22 @@ export default function DiscordPage() {
   useEffect(() => setLimit(PAGE), [q, roleFilter, hideBots, linkedOnly]);
 
   if (loading && !data) {
-    return <div className="p-12 text-center text-xs font-mono text-slate-400">Menghubungi Discord...</div>;
+    return <div className="py-16 text-center text-sm text-neutral-500">Menghubungi Discord...</div>;
   }
 
   if (data && !data.configured) return <SetupGuide />;
 
   if (data && "error" in data) {
     return (
-      <div className="p-6 max-w-3xl space-y-4">
-        <h1 className="text-xl font-bold font-mono tracking-wide text-slate-100 uppercase">Discord</h1>
-        <div className="p-4 rounded-xl border border-rose-500/40 bg-rose-500/10 text-xs font-mono text-rose-200 flex gap-3">
-          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+      <div className="max-w-3xl space-y-5">
+        <PageHeader title="Discord" icon={MessageSquare} />
+        <div className="p-4 rounded-2xl border border-[#E50914]/40 bg-[#E50914]/10 text-sm text-red-200 flex gap-3">
+          <AlertTriangle className="h-5 w-5 shrink-0 text-[#FF1E2D]" />
           <div className="space-y-2">
             <p>{data.error}</p>
-            <button onClick={() => load(true)} className="underline hover:text-rose-100">Coba lagi</button>
+            <button onClick={() => load(true)} className="font-semibold underline hover:text-white">
+              Coba lagi
+            </button>
           </div>
         </div>
         <SetupGuide compact />
@@ -99,114 +116,117 @@ export default function DiscordPage() {
   const linkedCount = ok.members ? ok.members.filter((m) => playerByDiscord.has(m.id)).length : 0;
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Guild header */}
+    <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 min-w-0">
           {ok.guild.iconUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={ok.guild.iconUrl} alt="" className="w-12 h-12 rounded-xl border border-[#232B38]" />
+            <img src={ok.guild.iconUrl} alt="" className="h-14 w-14 rounded-2xl border border-[#2a2a2a]" />
           ) : (
-            <div className="w-12 h-12 rounded-xl bg-[#5865F2]/20 border border-[#5865F2]/40" />
+            <div className="h-14 w-14 rounded-2xl bg-[#E50914]/10 border border-[#E50914]/30 flex items-center justify-center">
+              <MessageSquare className="h-6 w-6 text-[#FF1E2D]" />
+            </div>
           )}
-          <div>
-            <h1 className="text-xl font-bold font-mono text-slate-100">{ok.guild.name}</h1>
-            <p className="text-xs font-mono text-slate-400">
-              {ok.guild.memberCount.toLocaleString("id-ID")} member •{" "}
-              <span className="text-emerald-400">{ok.guild.onlineCount.toLocaleString("id-ID")} online</span> •{" "}
-              {ok.roles.length} role • {linkedCount} terhubung ke FiveM
-            </p>
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold text-white truncate">{ok.guild.name}</h1>
+            <p className="text-xs sm:text-sm text-neutral-400">Server Discord yang terhubung ke dashboard</p>
           </div>
         </div>
-        <button
-          onClick={() => load(true)}
-          disabled={loading}
-          className="px-3 py-1.5 rounded-lg bg-[#141A24] border border-[#232B38] text-xs font-mono text-slate-300 hover:text-slate-100 disabled:opacity-50 flex items-center gap-1.5 w-fit"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
-          Sync {new Date(ok.fetchedAt).toLocaleTimeString("id-ID")}
+        <button onClick={() => load(true)} disabled={loading} className={btnGhost}>
+          <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+          Sinkron ulang · {new Date(ok.fetchedAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
         </button>
       </div>
 
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <StatCard label="Member" value={ok.guild.memberCount.toLocaleString("id-ID")} icon={Users} />
+        <StatCard label="Online" value={ok.guild.onlineCount.toLocaleString("id-ID")} icon={Users} tone="green" />
+        <StatCard label="Role" value={ok.roles.length} icon={ShieldCheck} tone="red" />
+        <StatCard label="Terhubung FiveM" value={linkedCount} icon={Link2} />
+      </div>
+
       {ok.warning && (
-        <div className="p-4 rounded-xl border border-amber-500/40 bg-amber-500/10 text-xs font-mono text-amber-200 flex gap-3">
-          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+        <div className="p-4 rounded-2xl border border-amber-500/40 bg-amber-500/10 text-xs text-amber-200 flex gap-3">
+          <AlertTriangle className="h-5 w-5 shrink-0 text-amber-400" />
           <div className="space-y-1">
-            <p className="font-semibold">Daftar member belum bisa dibaca</p>
-            <p className="text-amber-200/80">
-              Buka discord.com/developers/applications → aplikasi bot kamu → menu <strong>Bot</strong> → bagian
-              Privileged Gateway Intents → nyalakan <strong>SERVER MEMBERS INTENT</strong> → Save Changes. Lalu klik Sync.
-            </p>
+            <p className="text-sm font-bold text-amber-300">Daftar member belum bisa dibaca</p>
+            <ol className="list-decimal list-inside space-y-0.5 text-amber-200/90">
+              <li>Buka discord.com/developers/applications → pilih aplikasi bot</li>
+              <li>Menu <strong>Bot</strong> → Privileged Gateway Intents</li>
+              <li>Nyalakan <strong>SERVER MEMBERS INTENT</strong> → Save Changes</li>
+              <li>Kembali ke sini lalu klik <strong>Sinkron ulang</strong></li>
+            </ol>
           </div>
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
-        {/* Roles */}
-        <aside className="space-y-2">
-          <div className="flex items-center justify-between text-[10px] font-mono uppercase tracking-wider text-slate-400">
-            <span>Roles</span>
-            {roleFilter && (
-              <button onClick={() => setRoleFilter(null)} className="text-cyan-400 hover:underline normal-case tracking-normal">
+      <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6 items-start">
+        <Card
+          title="Role"
+          icon={ShieldCheck}
+          action={
+            roleFilter && (
+              <button onClick={() => setRoleFilter(null)} className="text-xs font-semibold text-[#FF1E2D] hover:underline">
                 Reset
               </button>
-            )}
-          </div>
-          <div className="rounded-xl border border-[#232B38] bg-[#12161F] divide-y divide-[#1A212D] max-h-[70vh] overflow-y-auto">
-            {ok.roles.map((r) => (
-              <button
-                key={r.id}
-                onClick={() => setRoleFilter(roleFilter === r.id ? null : r.id)}
-                className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-left text-xs font-mono transition-colors ${
-                  roleFilter === r.id ? "bg-[#1C2433]" : "hover:bg-[#161D29]"
-                }`}
-              >
-                <span className="flex items-center gap-2 min-w-0">
-                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: r.color || "#64748B" }} />
-                  <span className="truncate" style={{ color: r.color || "#CBD5E1" }}>{r.name}</span>
-                  {r.managed && <Bot className="w-3 h-3 text-slate-500 shrink-0" />}
-                </span>
-                <span className="text-slate-400 shrink-0">{r.memberCount ?? "—"}</span>
-              </button>
-            ))}
-          </div>
-        </aside>
+            )
+          }
+          bodyClassName="max-h-[65vh] overflow-y-auto p-2"
+        >
+          {ok.roles.map((r) => (
+            <button
+              key={r.id}
+              onClick={() => setRoleFilter(roleFilter === r.id ? null : r.id)}
+              aria-pressed={roleFilter === r.id}
+              className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl text-left text-xs font-semibold transition ${
+                roleFilter === r.id ? "bg-[#E50914] text-white glow-red-sm" : "text-neutral-300 hover:bg-[#181818] hover:text-white"
+              }`}
+            >
+              <span className="flex items-center gap-2 min-w-0">
+                <span className="h-2.5 w-2.5 rounded-full shrink-0 ring-1 ring-black/40" style={{ backgroundColor: r.color || "#A3A3A3" }} />
+                <span className="truncate">{r.name}</span>
+                {r.managed && <Bot className="h-3 w-3 opacity-60 shrink-0" />}
+              </span>
+              <span className={`shrink-0 font-mono-telemetry ${roleFilter === r.id ? "text-white/80" : "text-neutral-500"}`}>{r.memberCount ?? ""}</span>
+            </button>
+          ))}
+        </Card>
 
-        {/* Members */}
-        <section className="space-y-3 min-w-0">
-          <div className="flex flex-col md:flex-row gap-3 md:items-center justify-between">
-            <div className="relative w-full md:w-80">
-              <Search className="w-4 h-4 text-cyan-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Cari username, nickname, atau ID..."
-                className="w-full pl-9 pr-3 py-2 rounded-lg bg-[#0E1218] border border-[#232D3E] text-xs font-mono text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500/50"
-              />
+        <div className="space-y-3 min-w-0">
+          <div className="rounded-2xl bg-[#111111] border border-[#222] p-3 sm:p-4 flex flex-col md:flex-row gap-3 md:items-center">
+            <div className="relative flex-1 min-w-0">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-500" />
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari username, nickname, atau ID..." className={`${input} pl-9`} aria-label="Cari member" />
             </div>
-            <div className="flex items-center gap-4 text-xs font-mono text-slate-400">
-              <label className="flex items-center gap-1.5 cursor-pointer">
-                <input type="checkbox" checked={linkedOnly} onChange={(e) => setLinkedOnly(e.target.checked)} className="accent-cyan-500" />
-                Hanya yang terhubung FiveM
+            <div className="flex flex-wrap items-center gap-4 text-xs text-neutral-300">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={linkedOnly} onChange={(e) => setLinkedOnly(e.target.checked)} className="h-4 w-4 accent-[#E50914]" />
+                Terhubung FiveM saja
               </label>
-              <label className="flex items-center gap-1.5 cursor-pointer">
-                <input type="checkbox" checked={hideBots} onChange={(e) => setHideBots(e.target.checked)} className="accent-cyan-500" />
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={hideBots} onChange={(e) => setHideBots(e.target.checked)} className="h-4 w-4 accent-[#E50914]" />
                 Sembunyikan bot
               </label>
             </div>
           </div>
 
-          <div className="text-xs font-mono text-slate-400">
-            {filtered.length.toLocaleString("id-ID")} member
-            {activeRole && (
-              <>
-                {" "}dengan role <span style={{ color: activeRole.color || "#CBD5E1" }}>@{activeRole.name}</span>
-              </>
+          <Card
+            title={
+              <span>
+                {filtered.length.toLocaleString("id-ID")} member
+                {activeRole && <span className="text-neutral-400 font-normal"> dengan role {activeRole.name}</span>}
+              </span>
+            }
+            icon={Users}
+            bodyClassName="divide-y divide-[#1a1a1a]"
+          >
+            {filtered.length === 0 && (
+              <EmptyState
+                icon={Users}
+                title={ok.members ? "Tidak ada member yang cocok" : "Daftar member belum tersedia"}
+                desc={ok.members ? "Coba ubah filter atau kata kunci." : "Aktifkan Server Members Intent dulu (lihat petunjuk di atas)."}
+              />
             )}
-          </div>
-
-          <div className="rounded-xl border border-[#232B38] bg-[#12161F] divide-y divide-[#1A212D]">
-            {filtered.length === 0 && <div className="p-4 text-xs font-mono text-slate-400">Tidak ada member yang cocok.</div>}
             {filtered.slice(0, limit).map((m) => {
               const linked = playerByDiscord.get(m.id);
               const roles = m.roleIds
@@ -214,62 +234,47 @@ export default function DiscordPage() {
                 .filter((r): r is DiscordRole => Boolean(r))
                 .sort((a, b) => b.position - a.position);
               return (
-                <div key={m.id} className="flex flex-col md:flex-row md:items-center gap-3 p-3 hover:bg-[#161D29] transition-colors">
-                  <div className="flex items-center gap-3 md:w-72 shrink-0 min-w-0">
+                <div key={m.id} className="flex flex-col md:flex-row md:items-center gap-3 px-4 sm:px-5 py-3 hover:bg-[#161616] transition">
+                  <div className="flex items-center gap-3 md:w-64 shrink-0 min-w-0">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={m.avatarUrl} alt="" className="w-8 h-8 rounded-full bg-[#0A0D12]" loading="lazy" />
-                    <div className="min-w-0 text-xs font-mono">
-                      <div className="text-slate-100 font-semibold truncate flex items-center gap-1.5">
+                    <img src={m.avatarUrl} alt="" className="h-10 w-10 rounded-xl bg-[#181818] border border-[#2a2a2a]" loading="lazy" />
+                    <div className="min-w-0">
+                      <div className="text-sm font-bold text-white truncate flex items-center gap-1.5">
                         {m.displayName}
-                        {m.bot && <span className="text-[9px] px-1 rounded bg-[#5865F2] text-white">BOT</span>}
+                        {m.bot && <span className="text-[9px] px-1.5 rounded bg-[#2a2a2a] text-neutral-300">BOT</span>}
                       </div>
-                      <div className="text-[11px] text-slate-400 truncate">@{m.username}</div>
+                      <div className="text-[11px] text-neutral-500 truncate">@{m.username}</div>
                     </div>
                   </div>
 
                   <div className="flex flex-wrap gap-1 flex-1 min-w-0">
-                    {roles.slice(0, 6).map((r) => (
-                      <button
-                        key={r.id}
-                        onClick={() => setRoleFilter(r.id)}
-                        className="px-1.5 py-0.5 rounded text-[10px] font-mono border hover:brightness-125"
-                        style={{
-                          color: r.color || "#CBD5E1",
-                          borderColor: `${r.color || "#64748B"}55`,
-                          backgroundColor: `${r.color || "#64748B"}14`,
-                        }}
-                      >
-                        {r.name}
-                      </button>
+                    {roles.slice(0, 5).map((r) => (
+                      <RoleChip key={r.id} role={r} onClick={() => setRoleFilter(r.id)} />
                     ))}
-                    {roles.length > 6 && <span className="text-[10px] font-mono text-slate-400 self-center">+{roles.length - 6}</span>}
+                    {roles.length > 5 && <span className="text-[10px] text-neutral-500 self-center">+{roles.length - 5}</span>}
                   </div>
 
-                  <div className="md:w-48 shrink-0 text-xs font-mono md:text-right">
+                  <div className="md:w-48 shrink-0 text-xs md:text-right">
                     {linked ? (
-                      <Link href={`/players/${linked.id}`} className="inline-flex items-center gap-1.5 text-cyan-300 hover:text-cyan-200">
-                        <span className={`w-1.5 h-1.5 rounded-full ${linked.online ? "bg-emerald-500" : "bg-slate-600"}`} />
-                        <Link2 className="w-3 h-3" />
+                      <Link href={`/players/${linked.id}`} className="inline-flex items-center gap-1.5 font-semibold text-white hover:text-[#FF1E2D]">
+                        <span className={`h-2 w-2 rounded-full ${linked.online ? "bg-green-500" : "bg-neutral-600"}`} />
                         {linked.name}
                       </Link>
                     ) : (
-                      <span className="text-slate-500">Belum terhubung</span>
+                      <span className="text-neutral-600">Belum terhubung</span>
                     )}
                   </div>
                 </div>
               );
             })}
-          </div>
+          </Card>
 
           {filtered.length > limit && (
-            <button
-              onClick={() => setLimit((l) => l + PAGE)}
-              className="w-full py-2 rounded-lg border border-[#232B38] text-xs font-mono text-slate-300 hover:bg-[#161D29]"
-            >
+            <button onClick={() => setLimit((l) => l + PAGE)} className={`${btnGhost} w-full`}>
               Tampilkan {Math.min(PAGE, filtered.length - limit)} lagi
             </button>
           )}
-        </section>
+        </div>
       </div>
     </div>
   );
@@ -281,31 +286,30 @@ function SetupGuide({ compact = false }: { compact?: boolean }) {
     ["Ambil token", "Menu Bot → Reset Token → salin ke DISCORD_BOT_TOKEN di .env"],
     ["Aktifkan intent", "Menu Bot → Privileged Gateway Intents → nyalakan SERVER MEMBERS INTENT"],
     ["Invite bot", "Menu OAuth2 → URL Generator → scope 'bot' → permission 'View Channels' → buka URL dan pilih server"],
-    ["Ambil ID server", "Di Discord: Settings → Advanced → Developer Mode ON, lalu klik kanan nama server → Copy Server ID → DISCORD_GUILD_ID"],
+    ["Ambil ID server", "Discord: Settings → Advanced → Developer Mode ON, klik kanan nama server → Copy Server ID → DISCORD_GUILD_ID"],
     ["Restart", "Stop lalu jalankan lagi npm run dev"],
   ];
   return (
-    <div className={compact ? "space-y-3" : "p-6 max-w-3xl space-y-4"}>
+    <div className={compact ? "space-y-3" : "max-w-3xl space-y-5"}>
       {!compact && (
-        <div>
-          <h1 className="text-xl font-bold font-mono tracking-wide text-slate-100 uppercase">Discord belum terhubung</h1>
-          <p className="text-xs font-mono text-slate-400 mt-1">
-            Webhook hanya bisa <em>mengirim</em> pesan. Untuk membaca role dan member, dashboard butuh bot Discord.
-          </p>
-        </div>
+        <PageHeader
+          title="Discord belum terhubung"
+          icon={MessageSquare}
+          subtitle="Webhook hanya bisa mengirim pesan. Untuk membaca role dan member, dashboard butuh bot Discord."
+        />
       )}
-      <ol className="rounded-xl border border-[#232B38] bg-[#12161F] divide-y divide-[#1A212D] text-xs font-mono">
+      <Card title="Cara menghubungkan" bodyClassName="divide-y divide-[#1a1a1a]">
         {steps.map(([title, desc], i) => (
-          <li key={title} className="grid grid-cols-[28px_140px_1fr] gap-3 px-4 py-3">
-            <span className="text-cyan-400 font-bold">{i + 1}</span>
-            <span className="text-slate-100">{title}</span>
-            <span className="text-slate-400">{desc}</span>
-          </li>
+          <div key={title} className="flex gap-4 px-4 sm:px-5 py-3.5">
+            <span className="h-7 w-7 rounded-full bg-[#E50914] text-white text-xs font-bold flex items-center justify-center shrink-0">{i + 1}</span>
+            <div className="text-xs">
+              <div className="font-bold text-white">{title}</div>
+              <div className="text-neutral-400 mt-0.5">{desc}</div>
+            </div>
+          </div>
         ))}
-      </ol>
-      <p className="text-[11px] font-mono text-slate-500">
-        Bot tidak butuh permission Administrator. Token hanya dipakai di server dan tidak pernah dikirim ke browser.
-      </p>
+      </Card>
+      <p className="text-xs text-neutral-500">Bot tidak butuh permission Administrator. Token hanya dipakai di server dan tidak pernah dikirim ke browser.</p>
     </div>
   );
 }

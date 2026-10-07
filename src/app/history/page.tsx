@@ -2,29 +2,31 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { MapPin } from "lucide-react";
+import { MapPin, History, Search } from "lucide-react";
 import { store } from "@/lib/store";
 import { EventLog } from "@/types";
+import { PageHeader, Card, EmptyState, input } from "@/components/ui";
 
 const TYPES: { key: EventLog["eventType"] | "ALL"; label: string }[] = [
-  { key: "ALL", label: "All" },
-  { key: "JOIN_CITY", label: "Login" },
-  { key: "LEAVE_CITY", label: "Logout" },
-  { key: "CHAR_SWITCH", label: "Character" },
-  { key: "VEHICLE_CHANGE", label: "Vehicle" },
-  { key: "DISTRICT_MOVE", label: "Area" },
+  { key: "ALL", label: "Semua" },
+  { key: "JOIN_CITY", label: "Masuk kota" },
+  { key: "LEAVE_CITY", label: "Keluar kota" },
+  { key: "CHAR_SWITCH", label: "Ganti karakter" },
+  { key: "VEHICLE_CHANGE", label: "Kendaraan" },
+  { key: "DISTRICT_MOVE", label: "Pindah area" },
   { key: "DISCORD_LINK", label: "Discord" },
   { key: "ADMIN_ACTION", label: "Admin" },
 ];
+const LABEL = Object.fromEntries(TYPES.map((t) => [t.key, t.label])) as Record<string, string>;
 
-const dotColor: Record<EventLog["eventType"], string> = {
-  JOIN_CITY: "bg-emerald-500",
-  LEAVE_CITY: "bg-rose-500",
-  CHAR_SWITCH: "bg-purple-500",
-  VEHICLE_CHANGE: "bg-amber-500",
-  DISTRICT_MOVE: "bg-cyan-500",
-  DISCORD_LINK: "bg-indigo-400",
-  ADMIN_ACTION: "bg-slate-400",
+const DOT: Record<EventLog["eventType"], string> = {
+  JOIN_CITY: "bg-green-500",
+  LEAVE_CITY: "bg-[#E50914]",
+  CHAR_SWITCH: "bg-white",
+  VEHICLE_CHANGE: "bg-amber-400",
+  DISTRICT_MOVE: "bg-neutral-400",
+  DISCORD_LINK: "bg-neutral-400",
+  ADMIN_ACTION: "bg-neutral-500",
 };
 
 export default function HistoryPage() {
@@ -45,59 +47,60 @@ export default function HistoryPage() {
   );
 
   return (
-    <div className="p-6 space-y-6 max-w-5xl">
-      <div>
-        <h1 className="text-xl font-bold font-mono tracking-wide text-slate-100 uppercase">Session & Event History</h1>
-        <p className="text-xs text-slate-400 font-mono mt-0.5">
-          {new Date().toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" }).toUpperCase()}
-        </p>
-      </div>
+    <div className="space-y-6 max-w-5xl">
+      <PageHeader
+        title="Riwayat Aktivitas"
+        icon={History}
+        subtitle={new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+      />
 
-      <div className="flex flex-col md:flex-row gap-3 md:items-center justify-between">
-        <div className="flex flex-wrap gap-1.5">
+      <div className="rounded-2xl bg-[#111111] border border-[#222] p-3 sm:p-4 space-y-3">
+        <div className="relative">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-500" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari nama player atau lokasi..." className={`${input} pl-9`} aria-label="Cari aktivitas" />
+        </div>
+        <div className="flex gap-1.5 overflow-x-auto scrollbar-none -mx-1 px-1">
           {TYPES.map((t) => (
             <button
               key={t.key}
               onClick={() => setType(t.key)}
-              className={`px-2.5 py-1 rounded text-[11px] font-mono border transition-colors ${
-                type === t.key
-                  ? "bg-cyan-500/15 text-cyan-300 border-cyan-500/40"
-                  : "bg-[#141A24] text-slate-400 border-[#232B38] hover:text-slate-200"
+              aria-pressed={type === t.key}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition ${
+                type === t.key ? "bg-[#E50914] text-white glow-red-sm" : "bg-[#161616] text-neutral-400 border border-[#222] hover:text-white"
               }`}
             >
               {t.label}
             </button>
           ))}
         </div>
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Filter by player / area..."
-          className="w-full md:w-64 px-3 py-1.5 rounded-lg bg-[#0E1218] border border-[#232D3E] text-xs font-mono text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500/50"
-        />
       </div>
 
-      <ol className="relative border-l border-[#232B38] ml-2 space-y-4">
-        {filtered.length === 0 && <li className="pl-6 text-xs font-mono text-slate-400">Tidak ada event yang cocok.</li>}
-        {filtered.map((e) => (
-          <li key={e.id} className="pl-6 relative">
-            <span className={`absolute -left-[5px] top-1.5 w-2.5 h-2.5 rounded-full ${dotColor[e.eventType]}`} />
-            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs font-mono">
-              <span className="text-cyan-300 font-bold font-mono-telemetry">{e.timestamp}</span>
-              <Link href={`/players/${e.playerId}`} className="text-slate-100 font-semibold hover:text-cyan-300">
-                {e.playerName}
-              </Link>
-              <span className="text-[10px] text-slate-400">{e.eventType.replace("_", " ")}</span>
-            </div>
-            <p className="text-xs font-mono text-slate-300 mt-1">{e.eventData}</p>
-            {e.location && (
-              <p className="text-[11px] font-mono text-slate-400 mt-0.5 flex items-center gap-1">
-                <MapPin className="w-3 h-3" /> {e.location}
-              </p>
-            )}
-          </li>
-        ))}
-      </ol>
+      <Card bodyClassName="p-5 sm:p-6">
+        {filtered.length === 0 ? (
+          <EmptyState icon={History} title="Tidak ada aktivitas" desc="Coba ganti filter atau kata kunci." />
+        ) : (
+          <ol className="relative border-l border-[#252525] ml-1.5 space-y-6">
+            {filtered.map((e) => (
+              <li key={e.id} className="pl-6 relative">
+                <span className={`absolute -left-[6px] top-1 h-3 w-3 rounded-full ring-4 ring-[#111111] ${DOT[e.eventType]}`} />
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                  <span className="font-mono-telemetry text-neutral-500">{e.timestamp}</span>
+                  <Link href={`/players/${e.playerId}`} className="text-sm font-bold text-white hover:text-[#FF1E2D]">
+                    {e.playerName}
+                  </Link>
+                  <span className="px-2 py-0.5 rounded-md bg-[#181818] border border-[#2a2a2a] text-[10px] font-semibold text-neutral-300">{LABEL[e.eventType]}</span>
+                </div>
+                <p className="text-xs text-neutral-300 mt-1">{e.eventData}</p>
+                {e.location && (
+                  <p className="text-[11px] text-neutral-500 mt-1 flex items-center gap-1">
+                    <MapPin className="h-3 w-3" /> {e.location}
+                  </p>
+                )}
+              </li>
+            ))}
+          </ol>
+        )}
+      </Card>
     </div>
   );
 }
